@@ -1,0 +1,1582 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReportHub — Prototipo Funzionante</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --deloitte-green: #86BC25;
+      --deloitte-dark-green: #046A38;
+      --deloitte-black: #000000;
+      --deloitte-gray: #53565A;
+      --deloitte-light-gray: #A0A0A0;
+      --deloitte-bg-gray: #F5F5F5;
+      --deloitte-white: #FFFFFF;
+      --status-blue: #1F5FBF;
+      --status-green: #2EAF5D;
+      --status-orange: #F28C28;
+      --status-red: #D64545;
+      --border: #E6E8EB;
+      --sidebar-width: 285px;
+      --shadow-rest: 0 2px 20px rgba(0,0,0,0.06);
+      --shadow-hover: 0 8px 25px rgba(0,0,0,0.08);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      font-weight: 300;
+      color: #2c2c2c;
+      background: #fff;
+    }
+    @keyframes fadeInUp { from {opacity:0; transform:translateY(2vh);} to {opacity:1; transform:translateY(0);} }
+    @keyframes fadeInLeft { from {opacity:0; transform:translateX(-1.5vw);} to {opacity:1; transform:translateX(0);} }
+    @keyframes fadeInRight { from {opacity:0; transform:translateX(1.5vw);} to {opacity:1; transform:translateX(0);} }
+    .deloitte-brand-bar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 56px;
+      background: #000000;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2.5vw;
+      z-index: 1000;
+      border-bottom: 3px solid #86BC25;
+    }
+    .brand-context {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      color: #fff;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+    .dashboard {
+      display: grid;
+      grid-template-columns: var(--sidebar-width) 1fr;
+      min-height: 100vh;
+      margin-top: 56px;
+      background: var(--deloitte-bg-gray);
+    }
+    .dashboard-sidebar {
+      padding: 24px 0 28px;
+      position: sticky;
+      top: 56px;
+      height: calc(100vh - 56px);
+      display: flex;
+      flex-direction: column;
+      background: var(--deloitte-white);
+      border-right: 1px solid var(--border);
+      box-shadow: 8px 0 24px rgba(0,0,0,0.03);
+      z-index: 20;
+    }
+    .sidebar-logo { padding: 0 24px 20px; border-bottom: 1px solid var(--border); }
+    .product-mark { display: flex; align-items: center; gap: 14px; }
+    .product-icon {
+      width: 52px; height: 52px; border-radius: 12px; background: rgba(134,188,37,0.12); color: var(--deloitte-green);
+      display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 0 1px rgba(134,188,37,0.18);
+    }
+    .product-title { font-size: 28px; font-weight: 700; color: var(--deloitte-black); line-height: 1; }
+    .product-subtitle {
+      margin-top: 4px; font-size: 12px; color: var(--deloitte-gray); letter-spacing: 0.05em; text-transform: uppercase; font-weight: 500;
+    }
+    .sidebar-nav { display: flex; flex-direction: column; margin-top: 18px; flex-grow: 1; gap: 6px; padding: 0 12px; overflow-y: auto; }
+    .nav-section { display: grid; gap: 8px; padding: 6px 0 10px; }
+    .nav-section + .nav-section { margin-top: 8px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .nav-section-title {
+      padding: 0 14px; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--deloitte-light-gray);
+    }
+    .nav-section-items { display: grid; gap: 4px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 12px; padding: 14px 14px; text-decoration: none; cursor: pointer; border-left: 3px solid transparent;
+      border-radius: 10px; color: var(--deloitte-gray); font-size: 14px; font-weight: 500; transition: 0.25s ease;
+    }
+    .nav-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-rest); background: #fafafa; color: var(--deloitte-black); }
+    .nav-item.active {
+      border-left-color: var(--deloitte-green); color: var(--deloitte-black); background: rgba(134,188,37,0.08); box-shadow: var(--shadow-rest);
+    }
+    .nav-item .material-icons-outlined { font-size: 20px; }
+    .nav-item-label { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .nav-item-title { color: inherit; }
+    .nav-item-meta { font-size: 11px; color: var(--deloitte-light-gray); line-height: 1.3; }
+    .sidebar-footer { padding: 18px 24px 0; border-top: 1px solid var(--border); }
+    .sidebar-note { font-size: 12px; line-height: 1.5; color: var(--deloitte-gray); }
+    .dashboard-main { padding: 30px 34px 50px; min-width: 0; overflow-y: auto; }
+    .dashboard-topbar { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 28px; gap: 16px; animation: fadeInUp 0.6s ease; }
+    .dashboard-title { margin: 0; font-size: clamp(28px, 2.4vw, 42px); font-weight: 300; letter-spacing: -0.04em; color: var(--deloitte-black); }
+    .dashboard-subtitle { margin: 8px 0 0; font-size: 14px; color: var(--deloitte-gray); }
+    .topbar-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+    .dashboard-page { display: none; animation: fadeInUp 0.6s ease; }
+    .dashboard-page.active { display: block; }
+    .page-tabs { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+    .tab-btn {
+      border: 1px solid var(--border); background: var(--deloitte-white); color: var(--deloitte-gray); border-radius: 999px; padding: 10px 14px;
+      font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: var(--shadow-rest); transition: 0.25s ease;
+    }
+    .tab-btn.active { background: rgba(134,188,37,0.12); color: var(--deloitte-black); border-color: rgba(134,188,37,0.35); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 24px; }
+    .kpi-grid-three { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+    .kpi-card {
+      padding: 22px; display: flex; gap: 16px; align-items: center; background: var(--deloitte-white); border-radius: 8px; box-shadow: var(--shadow-rest);
+      transition: 0.25s ease; border-top: 4px solid transparent;
+    }
+    .kpi-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-hover); }
+    .kpi-card.highlight { border-top-color: var(--deloitte-green); }
+    .kpi-icon {
+      width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: rgba(134,188,37,0.1);
+      color: var(--deloitte-green); flex: 0 0 auto;
+    }
+    .kpi-body { display: flex; flex-direction: column; min-width: 0; }
+    .kpi-label { font-size: 12px; color: var(--deloitte-light-gray); text-transform: uppercase; letter-spacing: 1px; font-weight: 500; }
+    .kpi-value { margin-top: 6px; font-size: clamp(24px, 2vw, 34px); line-height: 1.1; font-weight: 700; color: var(--deloitte-black); }
+    .kpi-delta { margin-top: 8px; font-size: 13px; font-weight: 600; }
+    .kpi-delta.positive { color: var(--status-green); }
+    .kpi-delta.warning { color: var(--status-orange); }
+    .kpi-delta.negative { color: var(--status-red); }
+    .kpi-delta.info { color: var(--status-blue); }
+    .chart-card, .table-card, .section-card {
+      min-width: 0; background: var(--deloitte-white); border-radius: 8px; box-shadow: var(--shadow-rest); transition: 0.25s ease;
+    }
+    .chart-card:hover, .table-card:hover, .section-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
+    .chart-card, .table-card, .section-card { padding: 24px; }
+    .chart-card.large { min-height: 360px; }
+    .chart-title, .section-title { margin: 0 0 16px; font-size: 22px; font-weight: 400; color: var(--deloitte-black); }
+    .chart-caption, .section-subtitle { margin: -8px 0 18px; font-size: 13px; color: var(--deloitte-gray); line-height: 1.5; }
+    .chart-canvas { width: 100%; height: 280px; position: relative; }
+    .chart-canvas.tall { height: 340px; }
+    .chart-canvas.overview-bars { height: 360px; }
+    .table-card { margin-bottom: 24px; }
+    .table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .budget-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: none; align-items: center; justify-content: center; padding: 24px; z-index: 1200; }
+    .budget-modal-overlay.show { display: flex; }
+    .budget-modal { width: min(100%, 560px); background: var(--deloitte-white); border-radius: 12px; box-shadow: var(--shadow-hover); border-top: 4px solid var(--deloitte-green); padding: 24px; animation: fadeInUp 0.3s ease; }
+    .budget-modal-title { margin: 0 0 6px; font-size: clamp(20px, 1.4vw, 28px); font-weight: 600; color: var(--deloitte-black); }
+    .budget-modal-subtitle { margin: 0 0 18px; font-size: clamp(13px, 0.85vw, 16px); color: var(--deloitte-gray); }
+    .budget-modal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .budget-modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; }
+    .data-table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 14px; }
+    .badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+    .badge.success { background: rgba(46,175,93,0.12); color: var(--status-green); }
+    .badge.warning { background: rgba(242,140,40,0.14); color: var(--status-orange); }
+    .badge.danger { background: rgba(214,69,69,0.12); color: var(--status-red); }
+    .badge.info { background: rgba(31,95,191,0.12); color: var(--status-blue); }
+    .badge.neutral { background: rgba(83,86,90,0.1); color: var(--deloitte-gray); }
+    .content-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; margin-bottom: 24px; }
+    .mini-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+    .mini-card { background: #fafafa; border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+    .mini-card-label { font-size: 12px; color: var(--deloitte-light-gray); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+    .mini-card-value { margin-top: 8px; font-size: 20px; font-weight: 700; color: var(--deloitte-black); }
+    .mini-card-meta { margin-top: 8px; font-size: 13px; color: var(--deloitte-gray); line-height: 1.4; }
+    .toolbar-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; }
+    select, input[type="text"], input[type="date"], input[type="number"], input[type="file"], textarea {
+      width: 100%; padding: 11px 12px; border: 1px solid var(--border); border-radius: 10px; font-family: inherit; font-size: 14px; color: #2c2c2c; background: #fff;
+    }
+    .field-inline { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; }
+    .field-group { display: grid; gap: 8px; }
+    .field-label { font-size: 12px; font-weight: 600; color: var(--deloitte-light-gray); letter-spacing: 0.08em; text-transform: uppercase; }
+    .btn {
+      border: none; background: var(--deloitte-green); color: #fff; border-radius: 999px; padding: 12px 18px; font-family: inherit; font-size: 14px; font-weight: 600;
+      cursor: pointer; box-shadow: var(--shadow-rest); display: inline-flex; align-items: center; gap: 8px; transition: 0.25s ease;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+    .btn.secondary { background: #fff; color: var(--deloitte-gray); border: 1px solid var(--border); }
+    .btn.warning { background: var(--status-orange); }
+    .btn.blue { background: var(--status-blue); }
+    .btn.red { background: var(--status-red); }
+    .btn.small { padding: 8px 12px; font-size: 12px; }
+    .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+    .notification {
+      padding: 14px 16px; border-radius: 10px; margin-bottom: 18px; background: rgba(31,95,191,0.09); color: var(--status-blue); border: 1px solid rgba(31,95,191,0.18);
+      font-size: 14px; font-weight: 500; display: none;
+    }
+    .notification.show { display: block; }
+    .tabular-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .check-wrap { display: inline-flex; align-items: center; gap: 8px; font-weight: 500; }
+    .hidden { display: none !important; }
+    .app-shell.hidden { display: none !important; }
+    .login-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      z-index: 2000;
+      animation: fadeInUp 0.35s ease;
+    }
+    .login-panel {
+      width: min(100%, 460px);
+      background: var(--deloitte-white);
+      border-radius: 16px;
+      border-top: 4px solid var(--deloitte-green);
+      box-shadow: var(--shadow-hover);
+      padding: 28px;
+    }
+    .login-kicker {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--deloitte-light-gray);
+      margin-bottom: 10px;
+    }
+    .login-title {
+      margin: 0 0 8px;
+      font-size: clamp(26px, 2vw, 34px);
+      font-weight: 600;
+      color: var(--deloitte-black);
+    }
+    .login-subtitle {
+      margin: 0 0 22px;
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--deloitte-gray);
+    }
+    .brand-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .user-status {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      color: #fff;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .user-status.show { display: inline-flex; }
+    .readonly {
+      position: relative;
+      overflow: hidden;
+    }
+    .readonly::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0.45);
+      pointer-events: none;
+      z-index: 1;
+    }
+    .readonly-badge {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 2;
+      display: none;
+      pointer-events: none;
+    }
+    .readonly-badge.show { display: inline-flex; }
+    :focus-visible { outline: 3px solid var(--status-blue); outline-offset: 2px; border-radius: 6px; }
+    @media (max-width: 1200px) {
+      .content-grid, .field-inline { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 1024px) {
+      .dashboard { grid-template-columns: 1fr; }
+      .dashboard-sidebar { position: relative; top: 0; height: auto; padding: 20px 0 10px; }
+      .sidebar-nav { flex-direction: column; flex-wrap: nowrap; overflow-x: visible; overflow-y: visible; }
+      .dashboard-main { padding: 24px; height: 100%; overflow-y: auto; }
+    }
+    @media (max-width: 768px) {
+      .deloitte-brand-bar { height: 48px; }
+      .dashboard { margin-top: 48px; }
+      .dashboard-topbar { flex-direction: column; align-items: flex-start; }
+      .brand-context { display: none; }
+      .kpi-grid, .kpi-grid-three, .mini-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-overlay hidden" id="loginOverlay" aria-hidden="true">
+    <div class="login-panel" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+      <h1 class="login-title" id="loginTitle">Accesso a ReportHub</h1>
+      <p class="login-subtitle">Seleziona il ruolo operativo per accedere alla piattaforma e attivare i permessi associati.</p>
+      <div class="field-group" style="margin-bottom:20px;">
+        <label class="field-label" for="loginRoleSelect">Ruolo</label>
+        <select id="loginRoleSelect">
+          <option value="admin">Referente Amministrativo ISPRA</option>
+          <option value="agpbil">Referente Ufficio AGP-BIL</option>
+        </select>
+      </div>
+      <button class="btn" type="button" id="loginBtn"><span class="material-icons-outlined">login</span>Accedi</button>
+    </div>
+  </div>
+  <div class="app-shell hidden" id="appShell">
+  <header class="deloitte-brand-bar">
+    <div class="brand-context">
+      <span>ReportHub</span>
+      <span>Progetto MER</span>
+      <span id="currentDateDisplay">03/09/2026</span>
+      <div class="user-status" id="userStatusIndicator"></div>
+    </div>
+    <div class="brand-actions">
+      <button class="btn red small hidden" type="button" id="logoutBtn"><span class="material-icons-outlined">logout</span>Esci</button>
+    </div>
+  </header>
+  <div class="dashboard">
+    <aside class="dashboard-sidebar">
+      <div class="sidebar-logo">
+        <div class="product-mark" aria-label="ReportHub">
+          <div class="product-icon" aria-hidden="true"><span class="material-icons-outlined">fact_check</span></div>
+          <div>
+            <div class="product-title">ReportHub</div>
+            <div class="product-subtitle">Piattaforma trasferimenti e rendicontazione</div>
+          </div>
+        </div>
+      </div>
+      <nav class="sidebar-nav" aria-label="Navigazione schermate">
+        <div class="nav-section">
+          <div class="nav-section-items">
+            <a class="nav-item active" href="#overview" data-view="overview"><span class="material-icons-outlined">dashboard</span><span class="nav-item-label"><span class="nav-item-title">Dashboard</span></span></a>
+            <a class="nav-item" href="#budget" data-view="budget" data-tab="bud-2" data-budget-view="database-costi"><span class="material-icons-outlined">table_view</span><span class="nav-item-label"><span class="nav-item-title">Database dei costi</span><span class="nav-item-meta">Vista database AGP-BIL</span></span></a>
+          </div>
+        </div>
+        <div class="nav-section">
+          <div class="nav-section-title">Richiesta di trasferimento</div>
+          <div class="nav-section-items">
+            <a class="nav-item" href="#budget" data-view="budget" data-tab="bud-2" data-budget-view="upload-qe"><span class="material-icons-outlined">upload_file</span><span class="nav-item-label"><span class="nav-item-title">Upload Quadro Economico</span><span class="nav-item-meta">Accesso alla sezione di caricamento del QE</span></span></a>
+            <a class="nav-item" href="#budget" data-view="budget" data-tab="bud-1"><span class="material-icons-outlined">receipt_long</span><span class="nav-item-label"><span class="nav-item-title">Tracciamento dati di pagamento</span><span class="nav-item-meta">Inserimento e presidio dei dati</span></span></a>
+            <a class="nav-item" href="#transfer" data-view="transfer"><span class="material-icons-outlined">swap_horiz</span><span class="nav-item-label"><span class="nav-item-title">Configurazione importo da richiedere</span><span class="nav-item-meta">Selezione delle voci di spesa</span></span></a>
+          </div>
+        </div>
+        <div class="nav-section">
+          <div class="nav-section-title">Rendicontazione dei costi</div>
+          <div class="nav-section-items">
+            <a class="nav-item" href="#reporting" data-view="reporting" data-tab="rep-2"><span class="material-icons-outlined">assignment</span><span class="nav-item-label"><span class="nav-item-title">Tracciamento costi da rendicontare</span><span class="nav-item-meta">Estrazione e caricamento pagamenti</span></span></a>
+            <a class="nav-item" href="#reporting" data-view="reporting" data-tab="rep-3"><span class="material-icons-outlined">description</span><span class="nav-item-label"><span class="nav-item-title">Generazione documento di rendicontazione</span><span class="nav-item-meta">Preparazione allegato e output</span></span></a>
+            <a class="nav-item" href="#subjects" data-view="subjects"><span class="material-icons-outlined">groups</span><span class="nav-item-label"><span class="nav-item-title">Sezione Anagrafica</span><span class="nav-item-meta">Soggetti e responsabilità amministrative</span></span></a>
+          </div>
+        </div>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="sidebar-note">Ambiente dimostrativo con stato persistente lato browser, filtri, data binding tra schermate, tabelle interattive, grafici Chart.js e operazioni simulate per testing del processo To Be.</div>
+      </div>
+    </aside>
+    <main class="dashboard-main">
+      <div id="notification" class="notification" role="status" aria-live="polite"></div>
+      <header class="dashboard-topbar">
+        <div>
+          <h1 class="dashboard-title">Dashboard di monitoraggio</h1>
+          <p class="dashboard-subtitle">CUP I81G22000100001 · Soggetto Attuatore ISPRA</p>
+        </div>
+        <div class="topbar-actions"></div>
+      </header>
+      <section class="dashboard-page active" id="overview" data-page="overview"><div class="page-tabs" role="tablist" aria-label="Sheet dashboard"><button class="tab-btn active" data-tab-group="overview-tabs" data-tab-target="ov-1" role="tab" aria-selected="true">Overview di progetto</button><button class="tab-btn hidden" data-tab-group="overview-tabs" data-tab-target="ov-3" role="tab" aria-selected="false">Erosione spese previste da QE</button></div><div class="tab-panel active" id="ov-1" data-tab-panel="overview-tabs"><section class="kpi-grid"><div class="kpi-card highlight"><div class="kpi-icon"><span class="material-icons-outlined">groups_2</span></div><div class="kpi-body"><span class="kpi-label">Importo totale progetto</span><span class="kpi-value" id="oeSalTotal">€0</span><span class="kpi-delta info">100% · Totale dei pagamenti</span></div></div><div class="kpi-card"><div class="kpi-icon"><span class="material-icons-outlined">check_circle</span></div><div class="kpi-body"><span class="kpi-label">Importo rendicontato</span><span class="kpi-value" id="oeSalReported">€0</span><span class="kpi-delta positive">60% · Rispetto al totale di progetto</span></div></div><div class="kpi-card"><div class="kpi-icon"><span class="material-icons-outlined">pending_actions</span></div><div class="kpi-body"><span class="kpi-label">Importo residuo</span><span class="kpi-value" id="oeSalResidual">€0</span><span class="kpi-delta warning">40% · Ancora da rendicontare</span></div></div><div class="kpi-card hidden"><div class="kpi-icon"><span class="material-icons-outlined">schedule</span></div><div class="kpi-body"><span class="kpi-label">Scadenze</span><span class="kpi-value" id="kpiDeadline">0 gg</span><span class="kpi-delta warning">Invio rendicontazione</span></div></div></section><div class="content-grid"><section class="section-card"><h2 class="section-title">Riepilogo del rendicontato per macrovoce di spesa</h2><div class="chart-canvas overview-bars"><canvas id="overviewRendicontazioneChart"></canvas></div></section><section class="section-card"><h2 class="section-title">Overview erosione delle voci di spesa</h2><div class="mini-grid"><div class="mini-card"><div class="mini-card-label">Pagato</div><div class="mini-card-value" id="countPagato">€0</div></div><div class="mini-card"><div class="mini-card-label">Emesso</div><div class="mini-card-value" id="countEmesso">€0</div></div><div class="mini-card"><div class="mini-card-label">Previsto (da emettere)</div><div class="mini-card-value" id="countPrevisto">€0</div></div><div class="mini-card"><div class="mini-card-label">Rendicontato</div><div class="mini-card-value" id="countRendicontato">€0</div></div></div><div style="margin-top:18px; max-width: 400px; margin-left: auto; margin-right: auto;"><div class="chart-canvas" style="height:200px;"><canvas id="paymentStateChart"></canvas></div></div></section></div><section class="table-card"><h3 class="chart-title">Richieste di Trasferimento e stato delle Rendicontazioni</h3><div class="table-wrap"><table class="data-table"><thead><tr><th>Richiesta di trasferimento</th><th>Importo</th><th>Stato</th><th>Data richiesta</th><th>Data rendicontazione</th><th>Esito</th></tr></thead><tbody id="requestSummaryBody"></tbody></table></div></section></div><div class="tab-panel hidden" id="ov-3" data-tab-panel="overview-tabs"><section class="chart-card large"><h3 class="chart-title">Erosione spese previste da QE</h3><p class="chart-caption">Confronto tra importo previsto nel Quadro Economico e importo pagato/rendicontato per ogni macrovoce di spesa.</p><div class="chart-canvas tall"><canvas id="erosioneQeChart"></canvas></div></section><section class="table-card" style="display:none;"><table class="data-table"><tbody id="oeSalTableBody"></tbody></table></section></div></section>
+      <section class="dashboard-page" id="transfer" data-page="transfer"><div style="display:none;"><input type="date" id="transferStartDate" value="2026-01-01"><input type="date" id="transferEndDate" value="2026-03-31"><input type="text" id="transferRequestNumber" readonly><button class="btn blue" type="button" id="requestDetailBtn"><span class="material-icons-outlined">manage_search</span>Richiesta dettaglio</button><div class="mini-grid" id="qeCards"></div></div><section class="table-card"><div class="section-header"><div><h3 class="chart-title">Stato spese non rendicontate</h3></div><span class="badge warning" id="nonReportedAmountBadge">€0</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>MACROVOCE DI SPESA (Cluster)</th><th>WBS</th><th>CIG</th><th>EMITTENTE</th><th>DESCRIZIONE</th><th>NUMERO FATTURA</th><th>DATA FATTURA</th><th>IMPORTO FATTURA</th><th>ID MANDATO</th><th>DATA MANDATO</th><th>IMPORTO MANDATO</th><th>STATO</th><th>Azione</th></tr></thead><tbody id="transferPaymentsBody"></tbody></table></div><div class="btn-group" style="margin-top:18px;"><button class="btn" type="button" id="submitTransferRequest"><span class="material-icons-outlined">send</span>Trasferisci spese da rendicontare</button><button class="btn secondary" type="button" id="resetTransferSelection"><span class="material-icons-outlined">restart_alt</span>Reset selezione</button></div></section><section class="kpi-grid kpi-grid-three"><div class="kpi-card highlight"><div class="kpi-icon"><span class="material-icons-outlined">mark_email_read</span></div><div class="kpi-body"><span class="kpi-label">Stato richiesta</span><span class="kpi-value" id="transferRequestStatus">Bozza</span></div></div><div class="kpi-card"><div class="kpi-icon"><span class="material-icons-outlined">account_balance_wallet</span></div><div class="kpi-body"><span class="kpi-label">Importo totale incluso</span><span class="kpi-value" id="transferIncludedAmount">€0</span></div></div><div class="kpi-card"><div class="kpi-icon"><span class="material-icons-outlined">calculate</span></div><div class="kpi-body"><span class="kpi-label">Somma spese incluse</span><span class="kpi-value" id="transferPaymentsSum">€0</span></div></div><div class="kpi-card"><div class="kpi-icon"><span class="material-icons-outlined">sync_alt</span></div><div class="kpi-body"><span class="kpi-label">Spese aggiornate</span><span class="kpi-value" id="transferIncludedCount">0</span></div></div></section></section>
+      <section class="dashboard-page" id="reporting" data-page="reporting"><div class="page-tabs" role="tablist" aria-label="Tab rendicontazione"><button class="tab-btn active" data-tab-group="reporting-tabs" data-tab-target="rep-2" role="tab" aria-selected="true">Sezione Estrazione Pagamenti</button><button class="tab-btn" data-tab-group="reporting-tabs" data-tab-target="rep-3" role="tab" aria-selected="false">Pagamenti da rendicontare</button></div><div class="tab-panel active" id="rep-2" data-tab-panel="reporting-tabs"><section class="section-card"><div class="btn-group" style="margin-bottom:16px;"><button class="btn warning" type="button" id="extractExternalPayments"><span class="material-icons-outlined">cloud_sync</span>Carica Estrazione da Sistema Esterno</button><button class="btn" type="button" id="loadSelectedPayments"><span class="material-icons-outlined">playlist_add_check</span>Carica pagamenti selezionati</button></div><div class="mini-grid" style="margin-bottom:16px;"><div class="mini-card"><div class="mini-card-label">Pagamenti rilevati</div><div class="mini-card-value" id="detectedPaymentsCount">0</div></div><div class="mini-card"><div class="mini-card-label">Importo totale</div><div class="mini-card-value" id="detectedPaymentsAmount">€0</div></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th aria-label="Selezione righe"></th><th>MACROVOCE DI SPESA (Cluster)</th><th>WBS</th><th>CIG</th><th>EMITTENTE</th><th>DESCRIZIONE</th><th>NUMERO FATTURA</th><th>DATA FATTURA</th><th>IMPORTO FATTURA</th><th>ID MANDATO</th><th>DATA MANDATO</th><th>IMPORTO MANDATO</th></tr></thead><tbody id="externalPaymentsBody"></tbody></table></div></section></div><div class="tab-panel" id="rep-3" data-tab-panel="reporting-tabs"><section class="table-card"><div class="section-header"><div><h3 class="chart-title">Pagamenti da rendicontare</h3></div><div class="btn-group"><button class="btn" type="button" id="generateAllegato"><span class="material-icons-outlined">description</span>GENERA ALLEGATO 3A</button><button class="btn blue hidden" type="button" id="confirmAllegatoBtn"><span class="material-icons-outlined">check_circle</span>Conferma e Presenta Richiesta</button></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th>MACROVOCE DI SPESA (Cluster)</th><th>WBS</th><th>CIG</th><th>EMITTENTE</th><th>DESCRIZIONE</th><th>NUMERO FATTURA</th><th>DATA FATTURA</th><th>IMPORTO FATTURA</th><th>ID MANDATO</th><th>DATA MANDATO</th><th>IMPORTO MANDATO</th><th>STATO</th></tr></thead><tbody id="mandatesBody"></tbody></table></div></section></div></section>
+      <section class="dashboard-page" id="subjects" data-page="subjects"><div class="page-tabs" role="tablist" aria-label="Tab anagrafica"><button class="tab-btn active" data-tab-group="subjects-tabs" data-tab-target="sub-1">Titolari Effettivi</button><button class="tab-btn" data-tab-group="subjects-tabs" data-tab-target="sub-2">Soggetti Correlati</button><button class="tab-btn" data-tab-group="subjects-tabs" data-tab-target="sub-3">Procedure di Aggiudicazione</button><button class="tab-btn" data-tab-group="subjects-tabs" data-tab-target="sub-4">Accordi Quadro</button><button class="tab-btn" data-tab-group="subjects-tabs" data-tab-target="sub-5">Subappalti</button></div><div class="tab-panel active" id="sub-1" data-tab-panel="subjects-tabs"><section class="table-card"><div class="section-header"><div><h3 class="chart-title">Titolari Effettivi</h3></div><div class="btn-group"><button class="btn blue" type="button" id="loadBeneficialOwnersBtn"><span class="material-icons-outlined">upload_file</span>Carica estrazione da piattaforma</button><button class="btn" type="button" id="addBeneficialOwnerBtn"><span class="material-icons-outlined">add</span>Aggiungi Titolare</button></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Soggetto</th><th>Titolare Effettivo</th><th>Codice Fiscale</th><th>Stato Validazione</th><th>Caricato</th><th>Azioni</th></tr></thead><tbody id="beneficialOwnersBody"></tbody></table></div></section></div><div class="tab-panel" id="sub-2" data-tab-panel="subjects-tabs"><section class="table-card"><div class="section-header"><div><h3 class="chart-title">Soggetti Correlati</h3></div><div class="btn-group"><button class="btn blue" type="button" id="loadRelatedSubjectsBtn"><span class="material-icons-outlined">upload_file</span>Carica estrazione da piattaforma</button><button class="btn" type="button" id="addRelatedSubjectBtn"><span class="material-icons-outlined">add</span>Aggiungi Soggetto</button></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Codice Fiscale</th><th>Denominazione</th><th>Ruolo</th><th>Data Inizio</th><th>Data Fine</th><th>Caricato</th><th>Azioni</th></tr></thead><tbody id="relatedSubjectsBody"></tbody></table></div></section></div><div class="tab-panel" id="sub-3" data-tab-panel="subjects-tabs"><section class="table-card"><div class="section-header"><div><h3 class="chart-title">Procedure di Aggiudicazione</h3></div><div class="btn-group"><button class="btn blue" type="button" id="loadProceduresBtn"><span class="material-icons-outlined">upload_file</span>Carica estrazione da piattaforma</button><button class="btn" type="button" id="addProcedureBtn"><span class="material-icons-outlined">add</span>Aggiungi Procedura</button></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th>CIG</th><th>Importo</th><th>Aggiudicatario</th><th>Data Aggiudicazione</th><th>Caricato</th><th>Azioni</th></tr></thead><tbody id="proceduresBody"></tbody></table></div></section></div><div class="tab-panel" id="sub-4" data-tab-panel="subjects-tabs"><section class="table-card"><div class="section-header"><div><h3 class="chart-title">Accordi Quadro</h3></div><div class="btn-group"><button class="btn blue" type="button" id="loadAgreementsBtn"><span class="material-icons-outlined">upload_file</span>Carica estrazione da piattaforma</button><button class="btn" type="button" id="addAgreementBtn"><span class="material-icons-outlined">add</span>Aggiungi Accordo</button></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th>CIG</th><th>Descrizione</th><th>Importo</th><th>Data Inizio</th><th>Data Fine</th><th>Caricato</th><th>Azioni</th></tr></thead><tbody id="agreementsBody"></tbody></table></div></section></div><div class="tab-panel" id="sub-5" data-tab-panel="subjects-tabs"><section class="table-card"><div class="section-header"><div><h3 class="chart-title">Subappalti</h3></div><div class="btn-group"><button class="btn blue" type="button" id="loadSubcontractsBtn"><span class="material-icons-outlined">upload_file</span>Carica estrazione da piattaforma</button><button class="btn" type="button" id="addSubcontractBtn"><span class="material-icons-outlined">add</span>Aggiungi Subappalto</button></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th>WBS</th><th>RUP</th><th>CIG</th><th>APPALTATORE</th><th>P.I./C.F. SUBAPPALTATORE</th><th>SUBAPPALTATORE</th><th>IMPORTO SUBAPPALTO</th><th>ATTIVITÀ</th><th>STATO</th><th>Caricato</th><th>DATA AUTORIZZAZIONE</th><th>Azioni</th></tr></thead><tbody id="subcontractsBody"></tbody></table></div></section></div></section>
+      <section class="dashboard-page" id="budget" data-page="budget"><div class="page-tabs hidden" role="tablist" aria-label="Tab AGP-BIL"><button class="tab-btn active" data-tab-group="budget-tabs" data-tab-target="bud-1" role="tab" aria-selected="true">Sezione AGP-BIL</button><button class="tab-btn" data-tab-group="budget-tabs" data-tab-target="bud-2" role="tab" aria-selected="false">Database AGP-BIL</button></div><div class="tab-panel active" id="bud-1" data-tab-panel="budget-tabs"><section class="section-card highlight"><div class="field-inline" style="margin-bottom:16px;"><div class="field-group"><label class="field-label" for="newItemCategory">Categoria</label><select id="newItemCategory"><option value="">Seleziona categoria</option></select></div><div class="field-group"><label class="field-label" for="agpCig">CIG</label><select id="agpCig"><option value="">Seleziona CIG</option></select></div><div class="field-group"><label class="field-label" for="agpWbs">WBS</label><select id="agpWbs"><option value="">Seleziona WBS</option></select></div></div><div class="field-inline" style="margin-bottom:16px;"><div class="field-group"><label class="field-label" for="reportingOperatorSearch">OPERATORE ECONOMICO/DIPENDENTE</label><select id="reportingOperatorSearch"><option value="all">Tutti</option></select></div><div class="field-group"><label class="field-label" for="reportingSalSearch">SAL/OGGETTO</label><select id="reportingSalSearch"><option value="all">Tutti</option></select></div><div class="field-group"></div></div><div class="field-inline" style="margin-bottom:16px;"><div class="field-group"><label class="field-label" for="invoiceNumber">Numero fattura</label><input type="text" id="invoiceNumber"></div><div class="field-group"><label class="field-label" for="invoiceDate">Data fattura</label><input type="date" id="invoiceDate"></div></div><div class="field-inline" style="margin-bottom:16px;"><div class="field-group"><label class="field-label" for="invoiceAmount">Importo fatturato</label><input type="number" id="invoiceAmount" min="0" step="0.01"></div><div class="field-group"><label class="field-label" for="mandateNumber">Numero mandato</label><input type="text" id="mandateNumber"></div><div class="field-group"><label class="field-label" for="mandateDate">Data del mandato di pagamento</label><input type="date" id="mandateDate"></div></div><div class="btn-group" style="margin-bottom:16px;"><button class="btn" type="button" id="addReportingItem"><span class="material-icons-outlined">add</span>Aggiungi voce</button></div><div class="table-wrap" style="margin-bottom:18px;"><table class="data-table"><tbody id="reportingItemsBody"></tbody></table></div><div class="field-inline" style="margin-bottom:16px;"><div class="field-group"><label class="field-label" for="entryCheckState">Flag</label><select id="entryCheckState"><option value="Caricabile">Caricabile</option><option value="Da verificare">Da verificare</option></select></div></div></section></div><div class="tab-panel" id="bud-2" data-tab-panel="budget-tabs"><section class="section-card highlight" style="margin-bottom:24px;" data-budget-view="upload-qe"><div class="section-header"><div><h2 class="section-title">Caricamento Quadro Economico</h2><p class="section-subtitle">Carica il QE di progetto per popolare la sezione di tracciamento spese previste ed effettuate.</p></div><div class="btn-group"><button class="btn blue" type="button" id="loadQeProjectBtn"><span class="material-icons-outlined">upload_file</span>CARICA QE</button><button class="btn secondary" type="button" id="resetQeBtn"><span class="material-icons-outlined">delete_sweep</span>RESET QE</button><button class="btn red" type="button" id="resetAllBtn"><span class="material-icons-outlined">restart_alt</span>RESET COMPLETO</button></div></div></section><section class="table-card hidden" data-budget-view="database-costi"><div class="section-header"><div><h3 class="chart-title">Tracciamento spese previste ed effettuate</h3><p class="chart-caption">Filtri per categoria, data e stato.</p></div></div><div class="toolbar-row" style="margin-bottom:12px;"><div class="field-group" style="flex:1; min-width:250px;"><label class="field-label" for="budgetSearchInput">Ricerca</label><input type="text" id="budgetSearchInput" placeholder="Cerca per mandato, operatore, WBS..."></div></div><div class="toolbar-row"><div class="field-group" style="min-width:180px;"><label class="field-label" for="budgetCategoryFilter">Categoria</label><select id="budgetCategoryFilter"><option value="all">Tutte</option></select></div><div class="field-group" style="min-width:180px;"><label class="field-label" for="budgetDateFilter">Data da</label><input type="date" id="budgetDateFilter"></div><div class="field-group" style="min-width:180px;"><label class="field-label" for="budgetStateFilter">Stato</label><select id="budgetStateFilter"><option value="all">Tutti</option></select></div><div class="field-group" style="align-self:end;"><button class="btn secondary" type="button" id="resetBudgetFilters"><span class="material-icons-outlined">restart_alt</span>Reset filtri</button></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th>MACROVOCE DI SPESA (Cluster)</th><th>WBS</th><th>CIG</th><th>EMITTENTE</th><th>DESCRIZIONE</th><th>NUMERO FATTURA</th><th>DATA FATTURA</th><th>IMPORTO FATTURA</th><th>ID MANDATO</th><th>DATA MANDATO</th><th>IMPORTO MANDATO</th><th>STATO</th><th>AZIONI</th></tr></thead><tbody id="budgetBody"></tbody></table></div></section></div></section>
+    </main>
+  </div>
+  <div class="budget-modal-overlay hidden" id="budgetEditModal" aria-hidden="true">
+    <div class="budget-modal" role="dialog" aria-modal="true" aria-labelledby="budgetModalTitle">
+      <h3 class="budget-modal-title" id="budgetModalTitle">Modifica voce di budget</h3>
+      <p class="budget-modal-subtitle">Aggiorna i dati della riga selezionata e salva per riflettere le modifiche nella tabella.</p>
+      <div class="budget-modal-grid">
+        <div class="field-group">
+          <label class="field-label" for="editMandateNumber">Numero mandato</label>
+          <input type="text" id="editMandateNumber">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="editMandateDate">Data mandato</label>
+          <input type="date" id="editMandateDate">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="editInvoiceNumber">Numero fattura</label>
+          <input type="text" id="editInvoiceNumber">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="editInvoiceDate">Data fattura</label>
+          <input type="date" id="editInvoiceDate">
+        </div>
+        <div class="field-group" style="grid-column: 1 / -1;">
+          <label class="field-label" for="editEntryState">Stato</label>
+          <select id="editEntryState"></select>
+        </div>
+      </div>
+      <div class="budget-modal-actions">
+        <button class="btn secondary" type="button" onclick="closeBudgetModal()">Annulla</button>
+        <button class="btn" type="button" onclick="saveBudgetEntry()">Salva</button>
+      </div>
+    </div>
+  </div>
+  <div class="budget-modal-overlay hidden" id="beneficialOwnerModal" aria-hidden="true">
+    <div class="budget-modal" role="dialog" aria-modal="true" aria-labelledby="boModalTitle">
+      <h3 class="budget-modal-title" id="boModalTitle">Aggiungi Titolare Effettivo</h3>
+      <p class="budget-modal-subtitle">Inserisci i dati del titolare effettivo.</p>
+      <div class="budget-modal-grid">
+        <div class="field-group">
+          <label class="field-label" for="boSoggetto">Soggetto</label>
+          <input type="text" id="boSoggetto">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="boTitolare">Titolare Effettivo</label>
+          <input type="text" id="boTitolare">
+        </div>
+        <div class="field-group" style="grid-column: 1 / -1;">
+          <label class="field-label" for="boCf">Codice Fiscale</label>
+          <input type="text" id="boCf">
+        </div>
+      </div>
+      <div class="budget-modal-actions">
+        <button class="btn secondary" type="button" onclick="closeSubjectsModal('beneficialOwnerModal')">Annulla</button>
+        <button class="btn" type="button" onclick="saveBeneficialOwner()">Salva</button>
+      </div>
+    </div>
+  </div>
+  <div class="budget-modal-overlay hidden" id="relatedSubjectModal" aria-hidden="true">
+    <div class="budget-modal" role="dialog" aria-modal="true" aria-labelledby="rsModalTitle">
+      <h3 class="budget-modal-title" id="rsModalTitle">Aggiungi Soggetto Correlato</h3>
+      <p class="budget-modal-subtitle">Inserisci i dati del soggetto correlato.</p>
+      <div class="budget-modal-grid">
+        <div class="field-group">
+          <label class="field-label" for="rsCf">Codice Fiscale</label>
+          <input type="text" id="rsCf">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="rsDenominazione">Denominazione</label>
+          <input type="text" id="rsDenominazione">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="rsRuolo">Ruolo</label>
+          <input type="text" id="rsRuolo">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="rsInizio">Data Inizio</label>
+          <input type="date" id="rsInizio">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="rsFine">Data Fine</label>
+          <input type="date" id="rsFine">
+        </div>
+      </div>
+      <div class="budget-modal-actions">
+        <button class="btn secondary" type="button" onclick="closeSubjectsModal('relatedSubjectModal')">Annulla</button>
+        <button class="btn" type="button" onclick="saveRelatedSubject()">Salva</button>
+      </div>
+    </div>
+  </div>
+  <div class="budget-modal-overlay hidden" id="procedureModal" aria-hidden="true">
+    <div class="budget-modal" role="dialog" aria-modal="true" aria-labelledby="procModalTitle">
+      <h3 class="budget-modal-title" id="procModalTitle">Aggiungi Procedura di Aggiudicazione</h3>
+      <p class="budget-modal-subtitle">Inserisci i dati della procedura.</p>
+      <div class="budget-modal-grid">
+        <div class="field-group">
+          <label class="field-label" for="procCig">CIG</label>
+          <input type="text" id="procCig">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="procImporto">Importo</label>
+          <input type="number" id="procImporto" min="0" step="0.01">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="procAggiudicatario">Aggiudicatario</label>
+          <input type="text" id="procAggiudicatario">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="procData">Data Aggiudicazione</label>
+          <input type="date" id="procData">
+        </div>
+      </div>
+      <div class="budget-modal-actions">
+        <button class="btn secondary" type="button" onclick="closeSubjectsModal('procedureModal')">Annulla</button>
+        <button class="btn" type="button" onclick="saveProcedure()">Salva</button>
+      </div>
+    </div>
+  </div>
+  <div class="budget-modal-overlay hidden" id="agreementModal" aria-hidden="true">
+    <div class="budget-modal" role="dialog" aria-modal="true" aria-labelledby="agModalTitle">
+      <h3 class="budget-modal-title" id="agModalTitle">Aggiungi Accordo Quadro</h3>
+      <p class="budget-modal-subtitle">Inserisci i dati dell'accordo quadro.</p>
+      <div class="budget-modal-grid">
+        <div class="field-group">
+          <label class="field-label" for="agCig">CIG</label>
+          <input type="text" id="agCig">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="agDescrizione">Descrizione</label>
+          <input type="text" id="agDescrizione">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="agImporto">Importo</label>
+          <input type="number" id="agImporto" min="0" step="0.01">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="agInizio">Data Inizio</label>
+          <input type="date" id="agInizio">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="agFine">Data Fine</label>
+          <input type="date" id="agFine">
+        </div>
+      </div>
+      <div class="budget-modal-actions">
+        <button class="btn secondary" type="button" onclick="closeSubjectsModal('agreementModal')">Annulla</button>
+        <button class="btn" type="button" onclick="saveAgreement()">Salva</button>
+      </div>
+    </div>
+  </div>
+  <div class="budget-modal-overlay hidden" id="subcontractModal" aria-hidden="true">
+    <div class="budget-modal" role="dialog" aria-modal="true" aria-labelledby="scModalTitle" style="width: min(100%, 720px);">
+      <h3 class="budget-modal-title" id="scModalTitle">Aggiungi Subappalto</h3>
+      <p class="budget-modal-subtitle">Inserisci i dati del subappalto.</p>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;">
+        <div class="field-group">
+          <label class="field-label" for="scWbs">WBS</label>
+          <input type="text" id="scWbs">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="scRup">RUP</label>
+          <input type="text" id="scRup">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="scCig">CIG</label>
+          <input type="text" id="scCig">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="scAppaltatore">Appaltatore</label>
+          <input type="text" id="scAppaltatore">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="scCfSubappaltatore">P.I./C.F. Subappaltatore</label>
+          <input type="text" id="scCfSubappaltatore">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="scSubappaltatore">Subappaltatore</label>
+          <input type="text" id="scSubappaltatore">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="scImporto">Importo Subappalto</label>
+          <input type="number" id="scImporto" min="0" step="0.01">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="scAttivita">Attività</label>
+          <input type="text" id="scAttivita">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="scStato">Stato</label>
+          <select id="scStato"><option value="Autorizzato">Autorizzato</option><option value="In attesa">In attesa</option><option value="Rifiutato">Rifiutato</option></select>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="scDataAutorizzazione">Data Autorizzazione</label>
+          <input type="date" id="scDataAutorizzazione">
+        </div>
+      </div>
+      <div class="budget-modal-actions">
+        <button class="btn secondary" type="button" onclick="closeSubjectsModal('subcontractModal')">Annulla</button>
+        <button class="btn" type="button" onclick="saveSubcontract()">Salva</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    const STORAGE_KEY = 'rendiconta-state-v3';
+    const SESSION_STORAGE_KEY = 'reportHub-session';
+    const ROLES = {
+      admin: {
+        id: 'admin',
+        label: 'Referente Amministrativo ISPRA',
+        fullName: 'Referente Amministrativo',
+        editableSections: ['overview', 'transfer', 'reporting', 'subjects', 'budget-bud2'],
+        readOnlySections: ['budget-bud1']
+      },
+      agpbil: {
+        id: 'agpbil',
+        label: 'Referente Ufficio AGP-BIL',
+        fullName: 'Referente AGP-BIL',
+        editableSections: ['budget-bud1', 'budget-bud2'],
+        readOnlySections: ['overview', 'transfer', 'reporting', 'subjects']
+      }
+    };
+    const BUDGET_QE_SOURCE = 'QE';
+    const BUDGET_MANUAL_SOURCE = 'AGP-BIL';
+    const REPORTING_QUEUE_STATUS = 'Da rendicontare';
+    const STANDARD_QE_MACROVOCI = [
+      'GARE e Affidamenti per servizi beni e lavori',
+      'Accordi ex art. 15 Lg 241/90',
+      'Personale esterno',
+      'Personale interno',
+      'Missioni / trasferte personale',
+      'Altri costi diretti connessi alla realizzazione degli interventi'
+    ];
+    let currentBudgetEditId = null;
+    const initialState = {
+      currentPage: 'overview', currentOverviewTab: 'ov-1', currentReportingTab: 'rep-2', currentSubjectsTab: 'sub-1', currentBudgetTab: 'bud-1', currentUserRole: '',
+      transferRequestNumber: 'MER-TR-2', transferRequestStatus: 'Bozza', transferSubmitted: false, rendicontazioneState: 'Da integrare',
+      requestReferenceData: [
+        { id:'MER-TR-1', nome:'Richiesta di Trasferimento 1', periodo:'Q4 2025', importo:0, percentuale:60, rendicontata:false, statoLabel:'Da presentare', pagamenti:0, dataRichiesta:'-', dataRendicontazione:'-' },
+        { id:'MER-TR-2', nome:'Richiesta di Trasferimento 2', periodo:'Q1 2026', importo:0, percentuale:40, rendicontata:false, statoLabel:'Da presentare', pagamenti:0, dataRichiesta:'-', dataRendicontazione:'-' }
+      ], payments: [], reportingItems: [], mandates: [], externalPayments: [], beneficialOwners: [], relatedSubjects: [], procedures: [], agreements: [], subappalti: [], budgetEntries: [], qe: STANDARD_QE_MACROVOCI.map(label => ({ label, importo: 0 }))
+    };
+    let state = loadState();
+    let charts = {};
+    function normalizeBudgetEntry(entry, index = 0) {
+      const fallbackId = entry.id || `be-${index + 1}`;
+      const importo = Number(entry.importo ?? entry.mandatoImporto ?? entry.fatturaImporto ?? 0) || 0;
+      const categoria = entry.categoria || entry.cluster || 'Voce di budget';
+      const descrizione = entry.descrizione || entry.voce || categoria;
+      const emittente = entry.emittente || entry.inseritoDa || '-';
+      const numero = entry.numero || entry.mandato || '-';
+      const mandatoData = entry.mandatoData || entry.dataMandato || entry.data || '-';
+      const stato = entry.stato || 'Previsto';
+      const inferredNonRendicontato = entry.nonRendicontato !== undefined ? entry.nonRendicontato : stato !== 'Rendicontato';
+      const originalStatus = entry.originalStatus || entry.stato || stato;
+      return {
+        id: fallbackId, source: entry.source || BUDGET_MANUAL_SOURCE, voce: entry.voce || descrizione, categoria, importo, data: entry.data || mandatoData || '-',
+        inseritoDa: entry.inseritoDa || 'Ufficio AGP-BIL', stato, originalStatus, nonRendicontato: inferredNonRendicontato, reportingQueued: Boolean(entry.reportingQueued),
+        transferRequestId: entry.transferRequestId || '', wbs: entry.wbs || '-', cig: entry.cig || 'N/D', emittente, descrizione, fatturaNumero: entry.fatturaNumero || '-',
+        fatturaData: entry.fatturaData || '-', fatturaImporto: Number(entry.fatturaImporto ?? importo) || 0, numero, mandatoData, mandatoImporto: Number(entry.mandatoImporto ?? importo) || 0,
+        sal: entry.sal || '-', periodo: entry.periodo || '-', importoPagato: Number(entry.importoPagato ?? entry.mandatoImporto ?? 0) || 0, importoRendicontato: Number(entry.importoRendicontato ?? 0) || 0
+      };
+    }
+    function normalizeState(rawState) {
+      const nextState = rawState ? structuredClone(rawState) : structuredClone(initialState);
+      Object.keys(initialState).forEach(key => { if (!Array.isArray(initialState[key]) && nextState[key] === undefined) nextState[key] = initialState[key]; });
+      nextState.qe = Array.isArray(nextState.qe) ? nextState.qe : [];
+      nextState.payments = Array.isArray(nextState.payments) ? nextState.payments : [];
+      nextState.reportingItems = Array.isArray(nextState.reportingItems) ? nextState.reportingItems : [];
+      nextState.mandates = Array.isArray(nextState.mandates) ? nextState.mandates : [];
+      nextState.externalPayments = Array.isArray(nextState.externalPayments) ? nextState.externalPayments : [];
+      nextState.requestReferenceData = Array.isArray(nextState.requestReferenceData) ? nextState.requestReferenceData : [];
+      nextState.beneficialOwners = Array.isArray(nextState.beneficialOwners) ? nextState.beneficialOwners : [];
+      nextState.relatedSubjects = Array.isArray(nextState.relatedSubjects) ? nextState.relatedSubjects : [];
+      nextState.procedures = Array.isArray(nextState.procedures) ? nextState.procedures : [];
+      nextState.agreements = Array.isArray(nextState.agreements) ? nextState.agreements : [];
+      nextState.subappalti = Array.isArray(nextState.subappalti) ? nextState.subappalti : [];
+      nextState.budgetEntries = (Array.isArray(nextState.budgetEntries) ? nextState.budgetEntries : []).map((entry, index) => normalizeBudgetEntry(entry, index));
+      return nextState;
+    }
+    function loadState() { try { const saved = localStorage.getItem(STORAGE_KEY); if (saved) return normalizeState(JSON.parse(saved)); } catch (e) {} return normalizeState(initialState); }
+    function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    function getActiveRoleConfig() { return ROLES[state.currentUserRole] || null; }
+    function getStoredSession() {
+      try {
+        const saved = localStorage.getItem(SESSION_STORAGE_KEY);
+        if (!saved) return null;
+        const parsed = JSON.parse(saved);
+        if (!parsed?.roleId || !ROLES[parsed.roleId]) return null;
+        return parsed;
+      } catch (error) {
+        return null;
+      }
+    }
+    function setStoredSession(session) {
+      try {
+        localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+      } catch (error) {}
+    }
+    function clearStoredSession() {
+      try {
+        localStorage.removeItem(SESSION_STORAGE_KEY);
+      } catch (error) {}
+    }
+    function toggleLoginUI(isLoggedIn) {
+      const loginOverlay = document.getElementById('loginOverlay');
+      const appShell = document.getElementById('appShell');
+      const logoutBtn = document.getElementById('logoutBtn');
+      if (loginOverlay) {
+        loginOverlay.classList.toggle('hidden', isLoggedIn);
+        loginOverlay.setAttribute('aria-hidden', String(isLoggedIn));
+      }
+      if (appShell) appShell.classList.toggle('hidden', !isLoggedIn);
+      if (logoutBtn) logoutBtn.classList.toggle('hidden', !isLoggedIn);
+    }
+    function updateUserStatusUI() {
+      const roleConfig = getActiveRoleConfig();
+      const indicator = document.getElementById('userStatusIndicator');
+      if (indicator) {
+        if (roleConfig) {
+          indicator.textContent = `Utente: ${roleConfig.fullName}`;
+          indicator.classList.add('show');
+        } else {
+          indicator.textContent = '';
+          indicator.classList.remove('show');
+        }
+      }
+    }
+    function setSectionReadonly(sectionElement, readonly) {
+      if (!sectionElement) return;
+      sectionElement.classList.toggle('readonly', readonly);
+      let badge = sectionElement.querySelector(':scope > .readonly-badge');
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'badge warning readonly-badge';
+        badge.textContent = 'SOLA CONSULTAZIONE';
+        sectionElement.prepend(badge);
+      }
+      badge.classList.toggle('show', readonly);
+      sectionElement.querySelectorAll('input, select, textarea, button').forEach(control => {
+        if (control.id === 'logoutBtn') return;
+        if (readonly) {
+          control.dataset.prevDisabled = control.disabled ? 'true' : 'false';
+          control.disabled = true;
+        } else if (control.dataset.prevDisabled !== 'true') {
+          control.disabled = false;
+        }
+      });
+    }
+    function updatePermissionsUI() {
+      const roleConfig = getActiveRoleConfig();
+      const sectionMap = {
+        overview: document.getElementById('overview'),
+        transfer: document.getElementById('transfer'),
+        reporting: document.getElementById('reporting'),
+        subjects: document.getElementById('subjects'),
+        'budget-bud1': document.getElementById('bud-1'),
+        'budget-bud2': document.getElementById('bud-2')
+      };
+      Object.values(sectionMap).forEach(section => setSectionReadonly(section, false));
+      if (!roleConfig) return;
+      (roleConfig.readOnlySections || []).forEach(sectionKey => setSectionReadonly(sectionMap[sectionKey], true));
+    }
+    function login(roleId) {
+      const roleConfig = ROLES[roleId];
+      if (!roleConfig) return;
+      const session = {
+        userId: `user-${Date.now()}`,
+        roleId: roleConfig.id,
+        roleName: roleConfig.label,
+        loginTime: Date.now()
+      };
+      state.currentUserRole = roleConfig.id;
+      setStoredSession(session);
+      toggleLoginUI(true);
+      updateUserStatusUI();
+      rerenderAll();
+      updatePermissionsUI();
+      showNotification(`Accesso effettuato come ${roleConfig.label}.`);
+    }
+    function logout() {
+      clearStoredSession();
+      state.currentUserRole = '';
+      updateUserStatusUI();
+      updatePermissionsUI();
+      toggleLoginUI(false);
+    }
+    function initializeSession() {
+      const session = getStoredSession();
+      if (session?.roleId && ROLES[session.roleId]) {
+        state.currentUserRole = session.roleId;
+        toggleLoginUI(true);
+        updateUserStatusUI();
+        return true;
+      }
+      clearStoredSession();
+      state.currentUserRole = '';
+      toggleLoginUI(false);
+      updateUserStatusUI();
+      return false;
+    }
+    function formatCurrency(value) { return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 }).format(value || 0); }
+    function formatDisplayDate(value) { if (!value || value === '-') return '-'; const parsed = new Date(value); if (Number.isNaN(parsed.getTime())) return value; return new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(parsed); }
+    function showNotification(message) { const el = document.getElementById('notification'); el.textContent = message; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 2600); }
+    function updateCurrentDateDisplay() { const dateEl = document.getElementById('currentDateDisplay'); if (dateEl) dateEl.textContent = new Intl.DateTimeFormat('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date()); }
+    function getBudgetViewMode() { const activeBudgetNav = document.querySelector('.nav-item.active[data-view="budget"]'); return activeBudgetNav?.dataset.budgetView || 'agp-bil'; }
+    function syncBudgetSections() { const budgetPage = document.getElementById('budget'); if (!budgetPage) return; const viewMode = state.currentPage === 'budget' ? getBudgetViewMode() : null; const budgetPanel = budgetPage.querySelector('#bud-2'); if (budgetPanel) { budgetPanel.querySelectorAll('[data-budget-view]').forEach(section => { const matches = viewMode && section.dataset.budgetView === viewMode; section.classList.toggle('hidden', !matches); }); } const budgetTabs = budgetPage.querySelector('.page-tabs'); if (budgetTabs) budgetTabs.classList.add('hidden'); }
+    function updateTopbarMeta(view) {
+      const titleEl = document.querySelector('.dashboard-title'); const subtitleEl = document.querySelector('.dashboard-subtitle'); const budgetViewMode = getBudgetViewMode();
+      const budgetMetaByTab = { 'bud-1': ['Tracciamento dati di pagamento','Sezione operativa AGP-BIL con form di inserimento e tabella di presidio'], 'bud-2': budgetViewMode === 'upload-qe' ? ['Upload Quadro Economico','Banner introduttivo e azioni di caricamento/reset del Quadro Economico'] : ['Database dei costi','Tabella di tracciamento spese previste ed effettuate con filtri e ricerca'] };
+      const reportingMetaByTab = { 'rep-2': ['Tracciamento costi da rendicontare','Estrazione pagamenti da sistemi esterni, controlli e caricamento dei costi da rendicontare'], 'rep-3': ['Generazione documento di rendicontazione','Pagamenti pronti per la rendicontazione e generazione del documento Allegato 3A'] };
+      const meta = { overview:['Dashboard di monitoraggio','CUP I81G22000100001 · Soggetto Attuatore ISPRA'], transfer:['Configurazione importo da richiedere','Dettaglio spese, selezione INCLUDI/ESCLUDI e invio richiesta'], reporting: reportingMetaByTab[state.currentReportingTab] || reportingMetaByTab['rep-2'], subjects:['Sezione Anagrafica','Titolari effettivi, soggetti correlati, procedure, accordi quadro e subappalti'], budget: budgetMetaByTab[state.currentBudgetTab] || budgetMetaByTab['bud-1'] };
+      titleEl.textContent = meta[view][0]; subtitleEl.textContent = meta[view][1] || ''; syncBudgetSections();
+    }
+    function setTabState(group, target) { if (!group || !target) return; document.querySelectorAll(`[data-tab-group="${group}"]`).forEach(b => { const active = b.dataset.tabTarget === target; b.classList.toggle('active', active); b.setAttribute('aria-selected', String(active)); }); document.querySelectorAll(`[data-tab-panel="${group}"]`).forEach(panel => panel.classList.toggle('active', panel.id === target)); if (group === 'overview-tabs') state.currentOverviewTab = target; if (group === 'reporting-tabs') state.currentReportingTab = target; if (group === 'subjects-tabs') state.currentSubjectsTab = target; if (group === 'budget-tabs') state.currentBudgetTab = target; }
+    function getTabGroupForView(view) { if (view === 'budget') return 'budget-tabs'; if (view === 'reporting') return 'reporting-tabs'; if (view === 'overview') return 'overview-tabs'; if (view === 'subjects') return 'subjects-tabs'; return null; }
+    function getPreferredNavItem(view, tab = null) { if (tab) { const tabMatch = document.querySelector(`.nav-item[data-view="${view}"][data-tab="${tab}"]`); if (tabMatch) return tabMatch; } return document.querySelector(`.nav-item[data-view="${view}"]:not([data-tab])`) || document.querySelector(`.nav-item[data-view="${view}"]`); }
+    function activatePage(view, options = {}) { const requestedTab = options.tab || null; const tabGroup = options.tabGroup || getTabGroupForView(view); const navItem = options.navItem || getPreferredNavItem(view, requestedTab); document.querySelectorAll('.dashboard-page').forEach(page => page.classList.toggle('active', page.dataset.page === view)); if (requestedTab && tabGroup) setTabState(tabGroup, requestedTab); document.querySelectorAll('.nav-item').forEach(item => item.classList.toggle('active', item === navItem)); state.currentPage = view; syncBudgetSections(); updateTopbarMeta(view); updatePermissionsUI(); saveState(); if (options.updateHistory) history.replaceState(null, '', navItem?.getAttribute('href') || `#${view}`); }
+    function getTransferRequests() { const base = [{id:'MER-TR-1', label:'MER-TR-1 · Q4 2025'}, {id:'MER-TR-2', label:'MER-TR-2 · Q1 2026'}, {id:state.transferRequestNumber, label:`${state.transferRequestNumber} · riferimento corrente`}]; return base.filter((v, i, a) => a.findIndex(x => x.id === v.id) === i); }
+    function getTransferPeriodDates(requestId) { const request = state.requestReferenceData.find(item => item.id === requestId); const period = request?.periodo || ''; const periodMap = { 'Q4 2025': { start: '2025-10-01', end: '2025-12-31' }, 'Q1 2026': { start: '2026-01-01', end: '2026-03-31' } }; return periodMap[period] || periodMap['Q1 2026']; }
+    function updateTransferDates() { const startInput = document.getElementById('transferStartDate'); const endInput = document.getElementById('transferEndDate'); if (!startInput || !endInput) return; const dates = getTransferPeriodDates(state.transferRequestNumber); startInput.value = dates.start; endInput.value = dates.end; renderQeCards(); }
+    function renderQeCards() { const container = document.getElementById('qeCards'); if (!container) return; const categoryTotals = {}; getTransferSourceEntries().forEach(entry => { categoryTotals[entry.categoria || 'Altro'] = (categoryTotals[entry.categoria || 'Altro'] || 0) + entry.importo; }); container.innerHTML = Object.keys(categoryTotals).sort().map(categoria => `<div class="mini-card"><div class="mini-card-label">${categoria}</div><div class="mini-card-value">${formatCurrency(categoryTotals[categoria])}</div><div class="mini-card-meta">Quota QE non rendicontata</div></div>`).join(''); }
+    function getEntryMandateKey(entry) { const mandateNumber = String(entry?.numero ?? entry?.mandato ?? '').trim(); return mandateNumber && mandateNumber !== '-' ? mandateNumber.toLowerCase() : ''; }
+    function getPaymentMandateKey(payment) { const mandateNumber = String(payment?.mandato ?? payment?.numero ?? '').trim(); return mandateNumber && mandateNumber !== '-' ? mandateNumber.toLowerCase() : ''; }
+    function getBudgetEntryDeduplicationKey(entry) { const mandateKey = getEntryMandateKey(entry); if (mandateKey) return `mandate:${mandateKey}`; const source = String(entry?.source || '').trim() || 'unknown'; const categoria = String(entry?.categoria || '').trim() || 'unknown'; const wbs = String(entry?.wbs || '').trim() || '-'; const cig = String(entry?.cig || '').trim() || 'N/D'; const fatturaNumero = String(entry?.fatturaNumero || '').trim() || '-'; const fatturaData = String(entry?.fatturaData || '').trim() || '-'; const importo = Number(entry?.mandatoImporto ?? entry?.fatturaImporto ?? entry?.importo ?? 0) || 0; return `provisional:${source}|${categoria}|${wbs}|${cig}|${fatturaNumero}|${fatturaData}|${importo.toFixed(2)}`; }
+    function deduplicateBudgetEntries(entries) { const byMandate = new Map(); const provisionalEntries = []; entries.forEach(entry => { const normalizedEntry = entry; const mandateKey = getEntryMandateKey(normalizedEntry); if (mandateKey) { const existing = byMandate.get(mandateKey); if (!existing) { byMandate.set(mandateKey, normalizedEntry); return; } const existingPriority = existing.source === BUDGET_QE_SOURCE ? 0 : 1; const candidatePriority = normalizedEntry.source === BUDGET_QE_SOURCE ? 0 : 1; if (candidatePriority >= existingPriority) byMandate.set(mandateKey, normalizedEntry); return; } provisionalEntries.push(normalizedEntry); }); return [...byMandate.values(), ...provisionalEntries]; }
+    function aggregateBudgetEntriesByCategory(entries, amountSelector) { return entries.reduce((acc, entry) => { const category = entry?.categoria || 'Altro'; acc[category] = (acc[category] || 0) + (Number(amountSelector(entry)) || 0); return acc; }, {}); }
+    function getDeduplicatedBudgetEntries() { return deduplicateBudgetEntries(state.budgetEntries); }
+    function getTransferSourceEntries() { const allowedStatuses = ['Pagato', 'Emesso', 'Previsto']; return deduplicateBudgetEntries(state.budgetEntries.filter(entry => entry.nonRendicontato && !entry.reportingQueued && allowedStatuses.some(status => (entry.stato || '').includes(status)))); }
+    function getReportingQueueEntries() { return deduplicateBudgetEntries(state.budgetEntries.filter(entry => entry.reportingQueued)); }
+    function syncPaymentsFromBudgetEntries() { const queuedMandates = new Set(getReportingQueueEntries().map(entry => getEntryMandateKey(entry)).filter(Boolean)); state.payments = state.payments.map(payment => queuedMandates.has(getPaymentMandateKey(payment)) ? { ...payment, included: false, loaded: true, reported: payment.reported || payment.stato === 'Rendicontato', stato: payment.reported || payment.stato === 'Rendicontato' ? 'Rendicontato' : 'Caricato' } : { ...payment, included: false }); }
+    function computeStats() { syncPaymentsFromBudgetEntries(); const deduplicatedPaymentsMap = new Map(); state.payments.forEach(payment => { const key = getPaymentMandateKey(payment) || `payment:${payment.mandato || payment.numero || payment.id || Math.random()}`; if (!deduplicatedPaymentsMap.has(key)) deduplicatedPaymentsMap.set(key, payment); }); const deduplicatedPayments = Array.from(deduplicatedPaymentsMap.values()); const deduplicatedBudgetEntries = getDeduplicatedBudgetEntries(); const totalSample = deduplicatedPayments.reduce((s,p) => s + p.importo, 0); const pagati = deduplicatedPayments.filter(p => ['Pagato','Apparso','Caricato','Rendicontato'].includes(p.stato)).reduce((s,p) => s + p.importo, 0); const apparsi = deduplicatedPayments.filter(p => ['Apparso','Caricato','Rendicontato'].includes(p.stato)).reduce((s,p) => s + p.importo, 0); const caricati = deduplicatedPayments.filter(p => p.loaded || ['Caricato','Rendicontato'].includes(p.stato)).reduce((s,p) => s + p.importo, 0); const rendicontati = deduplicatedBudgetEntries.filter(entry => !entry.nonRendicontato && entry.stato === 'Rendicontato').reduce((s,entry) => s + entry.importo, 0); const totalReported = rendicontati; const residual = deduplicatedBudgetEntries.filter(entry => entry.nonRendicontato).reduce((s,entry) => s + entry.importo, 0); const totalRequests = state.requestReferenceData.reduce((s,r) => s + r.importo, 0); const totalRenderedRequests = state.requestReferenceData.filter(r => r.rendicontata).reduce((s,r) => s + r.importo, 0); return {totalSample, pagati, apparsi, caricati, rendicontati, totalReported, residual, totalRequests, totalRenderedRequests}; }
+    function computeOverviewChartData() { const labels = STANDARD_QE_MACROVOCI.slice(); const qeMap = new Map((Array.isArray(state.qe) ? state.qe : []).map(item => [item.label, Number(item.importo || 0)])); const deduplicatedEntries = getDeduplicatedBudgetEntries(); const previstoByCategory = aggregateBudgetEntriesByCategory(deduplicatedEntries.filter(entry => entry.source === BUDGET_QE_SOURCE), entry => Number(entry?.fatturaImporto ?? entry?.mandatoImporto ?? entry?.importo ?? 0) || 0); const rendicontatiByCategory = aggregateBudgetEntriesByCategory(deduplicatedEntries.filter(entry => /rendicontat/i.test((entry?.stato || '').toString())), entry => Number(entry?.mandatoImporto ?? entry?.importo ?? entry?.fatturaImporto ?? 0) || 0); const previstoTotals = labels.map(label => qeMap.get(label) || previstoByCategory[label] || 0); const rendicontatiTotals = labels.map(label => rendicontatiByCategory[label] || 0); return { labels, previstoTotals, rendicontatiTotals }; }
+    function computePaymentStateData() { const grouped = getDeduplicatedBudgetEntries().reduce((acc, entry) => { const rawState = (entry?.stato || '').toString().trim(); if (!rawState) return acc; const amount = Number(entry?.mandatoImporto ?? entry?.importo ?? entry?.fatturaImporto ?? 0) || 0; if (!acc[rawState]) acc[rawState] = { label: rawState, total: 0, count: 0 }; acc[rawState].total += amount; acc[rawState].count += 1; return acc; }, {}); const items = Object.values(grouped); const sumByMatch = (regex) => items.filter(item => regex.test(item.label)).reduce((sum, item) => sum + (item.total || 0), 0); const pagato = sumByMatch(/pagat/i); const emesso = sumByMatch(/emess/i); const previsto = sumByMatch(/previst/i); const rendicontato = sumByMatch(/rendicontat/i); return { items, pagato, emesso, previsto, rendicontato }; }
+    function renderOverview() { const stats = computeStats(); const requests = state.requestReferenceData.slice(0, 2); const totalProject = requests.reduce((sum, r) => sum + (r.importo || 0), 0); const presentedRequests = requests.filter(r => r.rendicontata).length; const totalRequests = requests.length; const reportedAmount = requests.filter(r => r.rendicontata).reduce((sum, r) => sum + (r.importo || 0), 0); const residualAmount = Math.max(totalProject - reportedAmount, 0); const progressRequests = totalProject ? Math.round((reportedAmount / totalProject) * 100) : 0; document.getElementById('kpiDeadline').textContent = `${presentedRequests} di ${totalRequests}`; const paymentStateData = computePaymentStateData(); document.getElementById('countPagato').textContent = formatCurrency(paymentStateData.pagato); document.getElementById('countEmesso').textContent = formatCurrency(paymentStateData.emesso); document.getElementById('countPrevisto').textContent = formatCurrency(paymentStateData.previsto); document.getElementById('countRendicontato').textContent = formatCurrency(paymentStateData.rendicontato); document.getElementById('oeSalTotal').textContent = formatCurrency(totalProject || stats.totalRequests); document.getElementById('oeSalReported').textContent = formatCurrency(reportedAmount); document.getElementById('oeSalResidual').textContent = formatCurrency(residualAmount || stats.residual); const totalDelta = document.querySelector('#oeSalTotal')?.closest('.kpi-card')?.querySelector('.kpi-delta'); const reportedDelta = document.querySelector('#oeSalReported')?.closest('.kpi-card')?.querySelector('.kpi-delta'); const residualDelta = document.querySelector('#oeSalResidual')?.closest('.kpi-card')?.querySelector('.kpi-delta'); if (totalDelta) totalDelta.textContent = '100% · Totale dei pagamenti univoci'; if (reportedDelta) reportedDelta.textContent = `${progressRequests}% · Rispetto al totale di progetto`; if (residualDelta) residualDelta.textContent = `${Math.max(100 - progressRequests, 0)}% · Ancora da rendicontare`; document.getElementById('requestSummaryBody').innerHTML = requests.map(r => `<tr><td>${r.nome}</td><td>${formatCurrency(r.importo)}</td><td><span class="badge ${r.rendicontata ? 'success' : 'warning'}">${r.statoLabel || (r.rendicontata ? '✅ Presentata' : '⏳ Da presentare')}</span></td><td>${r.dataRichiesta && r.dataRichiesta !== '-' ? formatDisplayDate(r.dataRichiesta) : 'Da definire'}</td><td>${r.dataRendicontazione && r.dataRendicontazione !== '-' ? formatDisplayDate(r.dataRendicontazione) : 'Da definire'}</td><td>${r.rendicontata ? 'Rendicontata' : 'Da presentare'}</td></tr>`).join(''); }
+    function badgeClass(status) { if (['Caricato','Validato','Caricabile','Approvata','Rendicontato'].includes(status)) return 'success'; if (['Pagato','Apparso','Monitorato','Rilevato','Bozza','In bozza'].includes(status)) return 'info'; if (['Inviata','Richiesta integrazione','Scostamento da verificare','Da verificare','Da integrare','Emesso'].includes(status)) return 'warning'; if (['Errore','Non valido'].includes(status)) return 'danger'; return 'neutral'; }
+    function renderOeSalTable() { document.getElementById('oeSalTableBody').innerHTML = ''; }
+    function renderTransferSection() { document.getElementById('transferRequestNumber').value = state.transferRequestNumber; updateTransferDates(); document.getElementById('transferRequestStatus').textContent = state.transferRequestStatus; const filtered = getTransferSourceEntries(); const nonReported = filtered.reduce((s,entry) => s + entry.importo, 0); const includedRows = filtered.filter(entry => entry.transferRequestId === state.transferRequestNumber); const includedAmount = includedRows.reduce((s,entry) => s + entry.importo, 0); document.getElementById('nonReportedAmountBadge').textContent = formatCurrency(nonReported); document.getElementById('transferIncludedAmount').textContent = formatCurrency(includedAmount); document.getElementById('transferPaymentsSum').textContent = formatCurrency(includedAmount); document.getElementById('transferIncludedCount').textContent = includedRows.length; document.getElementById('transferPaymentsBody').innerHTML = filtered.map(entry => `<tr><td>${entry.categoria}</td><td>${entry.wbs}</td><td>${entry.cig || 'N/D'}</td><td>${entry.emittente}</td><td>${entry.descrizione}</td><td>${entry.fatturaNumero || '-'}</td><td>${entry.fatturaData || '-'}</td><td>${formatCurrency(entry.fatturaImporto || 0)}</td><td>${entry.numero}</td><td>${entry.mandatoData || '-'}</td><td>${formatCurrency(entry.mandatoImporto || 0)}</td><td><span class="badge ${badgeClass(entry.stato)}">${entry.stato}</span></td><td><div class="tabular-actions"><button class="btn small ${entry.transferRequestId === state.transferRequestNumber ? '' : 'secondary'}" type="button" onclick="toggleInclude('${entry.id}', true)">INCLUDI</button><button class="btn small ${entry.transferRequestId !== state.transferRequestNumber ? 'warning' : 'secondary'}" type="button" onclick="toggleInclude('${entry.id}', false)">ESCLUDI</button></div></td></tr>`).join(''); renderQeCards(); }
+    function renderReportingSection() { const categorySelect = document.getElementById('newItemCategory'); const salSelect = document.getElementById('reportingSalSearch'); const operatorSelect = document.getElementById('reportingOperatorSearch'); const cigSelect = document.getElementById('agpCig'); const wbsSelect = document.getElementById('agpWbs'); const categoryOptions = [...new Set(state.budgetEntries.map(entry => entry.categoria).filter(Boolean))]; const salOptions = [...new Set(state.budgetEntries.map(entry => entry.sal).filter(Boolean))]; const operatorOptions = [...new Set(state.budgetEntries.map(entry => entry.emittente).filter(Boolean))]; const cigOptions = [...new Set(state.budgetEntries.map(entry => entry.cig).filter(value => value && value !== 'N/D'))]; const wbsOptions = [...new Set(state.budgetEntries.map(entry => entry.wbs).filter(value => value && value !== '-'))]; categorySelect.innerHTML = '<option value="">Seleziona categoria</option>' + categoryOptions.sort().map(c => `<option value="${c}">${c}</option>`).join(''); salSelect.innerHTML = '<option value="all">Tutti</option>' + salOptions.sort().map(s => `<option value="${s}">${s}</option>`).join(''); operatorSelect.innerHTML = '<option value="all">Tutti</option>' + operatorOptions.sort().map(o => `<option value="${o}">${o}</option>`).join(''); cigSelect.innerHTML = '<option value="">Seleziona CIG</option>' + cigOptions.sort().map(c => `<option value="${c}">${c}</option>`).join(''); wbsSelect.innerHTML = '<option value="">Seleziona WBS</option>' + wbsOptions.sort().map(w => `<option value="${w}">${w}</option>`).join(''); document.getElementById('reportingItemsBody').innerHTML = state.reportingItems.map(item => `<tr><td>${item.categoria}</td><td>${formatCurrency(item.importo)}</td><td><button class="btn small red" type="button" onclick="removeReportingItem('${item.id}')">Rimuovi</button></td></tr>`).join(''); const syncedMandates = getReportingQueueEntries().filter(entry => entry.originalStatus !== 'Previsto').map((entry) => ({ cluster: entry.categoria || '-', wbs: entry.wbs || '-', cig: entry.cig || 'N/D', emittente: entry.emittente || '-', descrizione: entry.descrizione || entry.voce || 'Oggetto pagamento', fatturaNumero: entry.fatturaNumero || '-', fatturaData: entry.fatturaData || '-', fatturaImporto: entry.fatturaImporto || entry.importo || 0, numero: entry.numero, data: entry.mandatoData || entry.data || '-', importo: entry.mandatoImporto || entry.importo || 0, stato: entry.stato === 'Rendicontato' ? 'Rendicontato' : REPORTING_QUEUE_STATUS })); document.getElementById('mandatesBody').innerHTML = syncedMandates.map(m => `<tr><td>${m.cluster}</td><td>${m.wbs}</td><td>${m.cig}</td><td>${m.emittente}</td><td>${m.descrizione}</td><td>${m.fatturaNumero}</td><td>${m.fatturaData}</td><td>${formatCurrency(m.fatturaImporto || 0)}</td><td>${m.numero}</td><td>${m.data}</td><td>${formatCurrency(m.importo || 0)}</td><td><span class="badge ${badgeClass(m.stato)}">${m.stato}</span></td></tr>`).join(''); document.getElementById('detectedPaymentsCount').textContent = state.externalPayments.length; document.getElementById('detectedPaymentsAmount').textContent = formatCurrency(state.externalPayments.reduce((s,p)=>s+p.importo,0)); document.getElementById('externalPaymentsBody').innerHTML = state.externalPayments.map(p => {
+      const cluster = (p.categoria ?? p.cluster ?? '').toString().trim() || '-';
+      const wbs = p.wbs || '-';
+      const cig = p.cig || 'N/D';
+      const emittente = p.emittente || p.operatore || '-';
+      const descrizione = (p.descrizione ?? '').toString().trim() || '-';
+      const numeroFattura = p.numeroFattura || '-';
+      const dataFattura = p.dataFattura || '-';
+      const importoFattura = formatCurrency(p.importo || 0);
+      const idMandato = p.mandato || '-';
+      const dataMandato = p.dataMandato || p.dataPagamento || '-';
+      const importoMandato = formatCurrency(p.importo || 0);
+      return `<tr><td><label class="check-wrap"><input type="checkbox" ${p.caricato ? 'checked' : ''} ${!p.check ? 'disabled' : ''} onchange="toggleExternalLoaded('${p.id}', this.checked)"></label></td><td>${cluster}</td><td>${wbs}</td><td>${cig}</td><td>${emittente}</td><td>${descrizione}</td><td>${numeroFattura}</td><td>${dataFattura}</td><td>${importoFattura}</td><td>${idMandato}</td><td>${dataMandato}</td><td>${importoMandato}</td></tr>`;
+    }).join(''); }
+    function renderSubjects() {
+      document.getElementById('beneficialOwnersBody').innerHTML = state.beneficialOwners.map(r => `<tr><td>${r.soggetto}</td><td>${r.titolare}</td><td>${r.cf}</td><td><span class="badge ${r.valido ? 'success' : 'danger'}">${r.valido ? 'Validato' : 'Non valido'}</span></td><td><label class="check-wrap"><input type="checkbox" ${r.synced ? 'checked' : ''} onchange="toggleSubjectLoaded('beneficialOwners', '${r.id}', this.checked)"></label></td><td><button class="btn small red" type="button" onclick="deleteSubject('beneficialOwners', '${r.id}')">Elimina</button></td></tr>`).join('');
+      document.getElementById('relatedSubjectsBody').innerHTML = state.relatedSubjects.map(r => `<tr><td>${r.cf}</td><td>${r.denominazione}</td><td>${r.ruolo}</td><td>${formatDisplayDate(r.inizio)}</td><td>${formatDisplayDate(r.fine)}</td><td><label class="check-wrap"><input type="checkbox" ${r.synced ? 'checked' : ''} onchange="toggleSubjectLoaded('relatedSubjects', '${r.id}', this.checked)"></label></td><td><button class="btn small red" type="button" onclick="deleteSubject('relatedSubjects', '${r.id}')">Elimina</button></td></tr>`).join('');
+      document.getElementById('proceduresBody').innerHTML = state.procedures.map(r => `<tr><td>${r.cig}</td><td>${formatCurrency(r.importo)}</td><td>${r.aggiudicatario}</td><td>${formatDisplayDate(r.data)}</td><td><label class="check-wrap"><input type="checkbox" ${r.synced ? 'checked' : ''} onchange="toggleSubjectLoaded('procedures', '${r.id}', this.checked)"></label></td><td><button class="btn small red" type="button" onclick="deleteSubject('procedures', '${r.id}')">Elimina</button></td></tr>`).join('');
+      document.getElementById('agreementsBody').innerHTML = state.agreements.map(r => `<tr><td>${r.cig}</td><td>${r.descrizione}</td><td>${formatCurrency(r.importo)}</td><td>${formatDisplayDate(r.inizio)}</td><td>${formatDisplayDate(r.fine)}</td><td><label class="check-wrap"><input type="checkbox" ${r.synced ? 'checked' : ''} onchange="toggleSubjectLoaded('agreements', '${r.id}', this.checked)"></label></td><td><button class="btn small red" type="button" onclick="deleteSubject('agreements', '${r.id}')">Elimina</button></td></tr>`).join('');
+      document.getElementById('subcontractsBody').innerHTML = state.subappalti.map(r => `<tr><td>${r.wbs}</td><td>${r.rup}</td><td>${r.cig}</td><td>${r.appaltatore}</td><td>${r.cfSubappaltatore}</td><td>${r.subappaltatore}</td><td>${formatCurrency(r.importo)}</td><td>${r.attivita}</td><td><span class="badge ${badgeClass(r.stato)}">${r.stato}</span></td><td><label class="check-wrap"><input type="checkbox" ${r.synced ? 'checked' : ''} onchange="toggleSubjectLoaded('subappalti', '${r.id}', this.checked)"></label></td><td>${formatDisplayDate(r.dataAutorizzazione)}</td><td><button class="btn small red" type="button" onclick="deleteSubject('subappalti', '${r.id}')">Elimina</button></td></tr>`).join('');
+    }
+    function renderBudgetFilters() { const clusters = new Set(state.budgetEntries.map(entry => entry.categoria)); const states = [...new Set(state.budgetEntries.map(entry => entry.stato))]; const categorySelect = document.getElementById('budgetCategoryFilter'); const stateSelect = document.getElementById('budgetStateFilter'); const currentCategory = categorySelect.value || 'all'; const currentState = stateSelect.value || 'all'; categorySelect.innerHTML = '<option value="all">Tutte</option>' + Array.from(clusters).sort().map(c => `<option value="${c}">${c}</option>`).join(''); stateSelect.innerHTML = '<option value="all">Tutti</option>' + states.map(s => `<option value="${s}">${s}</option>`).join(''); categorySelect.value = Array.from(clusters).includes(currentCategory) ? currentCategory : 'all'; stateSelect.value = states.includes(currentState) ? currentState : 'all'; }
+    function renderBudget() {
+      const c = document.getElementById('budgetCategoryFilter').value;
+      const d = document.getElementById('budgetDateFilter').value;
+      const s = document.getElementById('budgetStateFilter').value;
+      const searchTerm = (document.getElementById('budgetSearchInput').value || '').toLowerCase();
+      
+      const filtered = state.budgetEntries.filter(entry => 
+        entry.source !== 'MER-TR-1' &&
+        entry.source !== 'Sistema esterno' &&
+        (c === 'all' || entry.categoria === c) && 
+        (!d || entry.data >= d) && 
+        (s === 'all' || entry.stato === s) && 
+        (!searchTerm || 
+          (entry.numero || '').toLowerCase().includes(searchTerm) || 
+          (entry.emittente || '').toLowerCase().includes(searchTerm) || 
+          (entry.wbs || '').toLowerCase().includes(searchTerm) || 
+          (entry.cig || '').toLowerCase().includes(searchTerm) || 
+          (entry.fatturaNumero || '').toLowerCase().includes(searchTerm) || 
+          (entry.categoria || '').toLowerCase().includes(searchTerm)
+        )
+      );
+      
+      let html = '';
+      filtered.forEach(entry => {
+        const isManualEntry = entry.source === 'AGP-BIL';
+        let buttons = '<button class="btn small" type="button" onclick="editBudgetEntry(\'' + entry.id + '\')">Modifica</button>';
+        if (isManualEntry) {
+          buttons += ' <button class="btn small red" type="button" onclick="deleteBudgetEntry(\'' + entry.id + '\')">Elimina</button>';
+        }
+        
+        html += '<tr>' +
+          '<td>' + entry.categoria + '</td>' +
+          '<td>' + entry.wbs + '</td>' +
+          '<td>' + entry.cig + '</td>' +
+          '<td>' + entry.emittente + '</td>' +
+          '<td>' + entry.descrizione + '</td>' +
+          '<td>' + entry.fatturaNumero + '</td>' +
+          '<td>' + entry.fatturaData + '</td>' +
+          '<td>' + formatCurrency(entry.fatturaImporto) + '</td>' +
+          '<td>' + entry.numero + '</td>' +
+          '<td>' + entry.mandatoData + '</td>' +
+          '<td>' + formatCurrency(entry.mandatoImporto) + '</td>' +
+          '<td><span class="badge ' + badgeClass(entry.stato) + '">' + entry.stato + '</span></td>' +
+          '<td><div class="tabular-actions">' + buttons + '</div></td>' +
+          '</tr>';
+      });
+      
+      document.getElementById('budgetBody').innerHTML = html;
+    }
+    window.removeReportingItem = function(id) { const reportingItem = state.reportingItems.find(x => x.id === id); if (reportingItem) { state.reportingItems = state.reportingItems.filter(x => x.id !== id); state.budgetEntries = state.budgetEntries.filter(entry => !(entry.source === 'AGP-BIL' && entry.categoria === reportingItem.categoria && entry.fatturaImporto === reportingItem.importo)); } rerenderAll(); showNotification('Voce di rendicontazione rimossa. Usa il tasto "Modifica" nel Database dei costi per aggiornare i dati mancanti.'); };
+    window.deleteBudgetEntry = function(entryId) { const entry = state.budgetEntries.find(x => x.id === entryId); if (!entry) return showNotification('Riga non trovata.'); if (entry.source !== 'AGP-BIL') { return showNotification('Puoi eliminare solo le righe aggiunte manualmente da "Tracciamento dati di pagamento".'); } const confirmDelete = confirm(`Sei sicuro di voler eliminare questa riga?\n\n` + `Macrovoce: ${entry.categoria}\n` + `Importo: €${(entry.fatturaImporto || entry.importo || 0).toLocaleString('it-IT', {minimumFractionDigits: 2})}\n\n` + `Questa azione non può essere annullata.`); if (!confirmDelete) return; state.budgetEntries = state.budgetEntries.filter(e => e.id !== entryId); state.reportingItems = state.reportingItems.filter(item => !(item.categoria === entry.categoria && item.importo === entry.fatturaImporto)); rerenderAll(); showNotification(`Riga "${entry.categoria}" eliminata. Usa il tasto "Modifica" per aggiornare i dati mancanti di altre righe.`); };
+    function chartBaseOptions() { return { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#53565A', font: { family: 'Inter', size: 12 } } }, tooltip: { backgroundColor: '#000000', titleFont: { family: 'Inter', weight: '600' }, bodyFont: { family: 'Inter' } } }, scales: { x: { ticks: { color: '#53565A', font: { family: 'Inter' } }, grid: { color: 'rgba(83,86,90,0.08)' } }, y: { ticks: { color: '#53565A', font: { family: 'Inter' } }, grid: { color: 'rgba(83,86,90,0.08)' } } } }; }
+    function upsertChart(key, config) { if (charts[key]) charts[key].destroy(); const canvas = document.getElementById(key); if (!canvas) return; charts[key] = new Chart(canvas, config); }
+    function renderCharts() { const paymentStateData = computePaymentStateData(); const paymentLabels = paymentStateData.items.map(item => item.label); const paymentTotals = paymentStateData.items.map(item => item.total); const paymentPalette = ['#86BC25','#046A38','#1F5FBF','#53565A','#A0A0A0','#C4D600']; upsertChart('paymentStateChart', { type:'pie', data:{labels:paymentLabels,datasets:[{label:'Importo €',data:paymentTotals,backgroundColor:paymentLabels.map((_, index) => paymentPalette[index % paymentPalette.length])}]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ color:'#53565A', font:{ family:'Inter', size:12 } } }, tooltip:{ backgroundColor:'#000000', titleFont:{ family:'Inter', weight:'600' }, bodyFont:{ family:'Inter' } } } } }); const deduplicatedEntries = getDeduplicatedBudgetEntries(); const sumBudgetByCategoryAndState = (categoryLabel, regex) => deduplicatedEntries.filter(entry => (entry?.categoria || '') === categoryLabel && regex.test((entry?.stato || '').toString())).reduce((sum, entry) => sum + (Number(entry?.mandatoImporto ?? entry?.importo ?? entry?.fatturaImporto ?? 0) || 0), 0); const overviewData = computeOverviewChartData(); upsertChart('overviewRendicontazioneChart', { type:'bar', data:{ labels: overviewData.labels, datasets:[{label:'Previsto QE', data: overviewData.previstoTotals, backgroundColor:'#046A38', borderRadius:8},{label:'Importo rendicontato', data: overviewData.rendicontatiTotals, backgroundColor:'#1F5FBF', borderRadius:8}] }, options: chartBaseOptions() }); const erosioneLabels = STANDARD_QE_MACROVOCI.slice(); const qeMap = new Map((Array.isArray(state.qe) ? state.qe : []).map(item => [item.label, Number(item.importo || 0)])); const previstoByCategory = aggregateBudgetEntriesByCategory(deduplicatedEntries.filter(entry => entry.source === BUDGET_QE_SOURCE), entry => Number(entry?.fatturaImporto ?? entry?.mandatoImporto ?? entry?.importo ?? 0) || 0); const previstoQe = erosioneLabels.map(label => qeMap.get(label) || previstoByCategory[label] || 0); const pagatoQe = erosioneLabels.map(label => sumBudgetByCategoryAndState(label, /pagat/i)); const rendicontatoQe = erosioneLabels.map(label => sumBudgetByCategoryAndState(label, /rendicontat/i)); upsertChart('erosioneQeChart', { type:'bar', data:{ labels: erosioneLabels, datasets:[ {label:'Previsto QE', data:previstoQe, backgroundColor:'#046A38', borderRadius:8}, {label:'Pagato', data:pagatoQe, backgroundColor:'#1F5FBF', borderRadius:8}, {label:'Rendicontato', data:rendicontatoQe, backgroundColor:'#86BC25', borderRadius:8} ] }, options: chartBaseOptions() }); }
+    function recomputeRendicontazioneState() { const renderedRequests = state.requestReferenceData.filter(r => r.rendicontata).length; const draftExists = state.reportingItems.length > 2; if (renderedRequests === state.requestReferenceData.length && state.requestReferenceData.length) state.rendicontazioneState = 'Approvata'; else if (renderedRequests >= 3 && state.transferSubmitted) state.rendicontazioneState = 'Da integrare'; else if (draftExists) state.rendicontazioneState = 'In bozza'; else if (state.transferSubmitted) state.rendicontazioneState = 'Inviata'; else state.rendicontazioneState = 'In Preparazione'; }
+    function rerenderAll() { recomputeRendicontazioneState(); renderQeCards(); renderOverview(); renderOeSalTable(); renderTransferSection(); renderReportingSection(); renderSubjects(); renderBudgetFilters(); renderBudget(); renderCharts(); updatePermissionsUI(); saveState(); }
+    function normalizeModalDate(value) { if (!value || value === '-') return ''; const text = String(value).trim(); if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text; const match = text.match(/^(\d{4}-\d{2}-\d{2})/); if (match) return match[1]; const parsed = new Date(text); if (Number.isNaN(parsed.getTime())) return ''; return parsed.toISOString().slice(0, 10); }
+    function populateBudgetStateOptions(selectedValue) { const select = document.getElementById('editEntryState'); const states = [...new Set(state.budgetEntries.map(entry => entry.stato).filter(Boolean))]; const options = (states.length ? states : ['Pagato', 'Emesso', 'Previsto', 'Caricato']).filter(stateValue => stateValue !== 'Rendicontato'); select.innerHTML = options.map(stateValue => `<option value="${stateValue}">${stateValue}</option>`).join(''); select.value = options.includes(selectedValue) ? selectedValue : options[0]; }
+    window.editBudgetEntry = function(entryId) { const entry = state.budgetEntries.find(x => x.id === entryId); if (!entry) return showNotification('Riga non trovata.'); currentBudgetEditId = entryId; document.getElementById('editMandateNumber').value = entry.numero || ''; document.getElementById('editMandateDate').value = normalizeModalDate(entry.mandatoData); document.getElementById('editInvoiceNumber').value = entry.fatturaNumero || ''; document.getElementById('editInvoiceDate').value = normalizeModalDate(entry.fatturaData); populateBudgetStateOptions(entry.stato || ''); const modal = document.getElementById('budgetEditModal'); modal.classList.remove('hidden'); modal.classList.add('show'); modal.setAttribute('aria-hidden', 'false'); };
+    window.closeBudgetModal = function() { currentBudgetEditId = null; const modal = document.getElementById('budgetEditModal'); modal.classList.remove('show'); modal.classList.add('hidden'); modal.setAttribute('aria-hidden', 'true'); };
+    window.saveBudgetEntry = function() { if (!currentBudgetEditId) return; const entryIndex = state.budgetEntries.findIndex(x => x.id === currentBudgetEditId); if (entryIndex === -1) return showNotification('Riga non trovata.'); const numero = document.getElementById('editMandateNumber').value.trim(); const mandatoData = document.getElementById('editMandateDate').value.trim(); const fatturaNumero = document.getElementById('editInvoiceNumber').value.trim(); const fatturaData = document.getElementById('editInvoiceDate').value.trim(); const stato = document.getElementById('editEntryState').value.trim(); if (!numero || !mandatoData || !fatturaNumero || !fatturaData || !stato) return showNotification('Compila tutti i campi del modal.'); const isValidDate = value => /^\d{4}-\d{2}-\d{2}$/.test(value); if (!isValidDate(mandatoData) || !isValidDate(fatturaData)) return showNotification('Le date devono essere nel formato YYYY-MM-DD.'); const entry = state.budgetEntries[entryIndex]; const normalizedMandateKey = numero.toLowerCase(); const linkedEntries = state.budgetEntries.filter(candidate => candidate.id !== currentBudgetEditId && getEntryMandateKey(candidate) === normalizedMandateKey); linkedEntries.forEach(linkedEntry => { linkedEntry.reportingQueued = entry.reportingQueued || linkedEntry.reportingQueued; linkedEntry.transferRequestId = entry.transferRequestId || linkedEntry.transferRequestId; linkedEntry.nonRendicontato = stato !== 'Rendicontato'; }); Object.assign(entry, normalizeBudgetEntry({ ...entry, numero, mandatoData, fatturaNumero, fatturaData, stato }, entryIndex)); closeBudgetModal(); rerenderAll(); showNotification(`Riga ${entry.numero || entry.id} aggiornata con deduplicazione per mandato.`); };
+    window.toggleInclude = function(entryId, include) { const entry = state.budgetEntries.find(x => x.id === entryId); if (!entry || !entry.nonRendicontato || entry.reportingQueued) return; entry.transferRequestId = include ? state.transferRequestNumber : ''; rerenderAll(); showNotification(`Pagamento ${entry.numero} ${include ? 'incluso' : 'escluso'} dalla richiesta.`); };
+    window.toggleExternalLoaded = function(id, checked) { const p = state.externalPayments.find(x => x.id === id); if (!p) return; p.caricato = checked; rerenderAll(); };
+    function readFileAsArrayBuffer(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = (e) => resolve(new Uint8Array(e.target.result)); reader.onerror = () => reject(reader.error); reader.readAsArrayBuffer(file); }); }
+    function parseFlexibleNumber(value) {
+      if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+      const text = String(value ?? '').trim();
+      if (!text) return 0;
+      const cleaned = text.replace(/\s|€/g, '');
+      if (cleaned.includes(',') && cleaned.includes('.')) {
+        return Number(cleaned.replace(/\./g, '').replace(',', '.')) || 0;
+      }
+      if (cleaned.includes(',')) {
+        return Number(cleaned.replace(/\./g, '').replace(',', '.')) || 0;
+      }
+      return Number(cleaned.replace(/,/g, '')) || 0;
+    }
+    function parseFlexibleDate(value) {
+      if (value === null || value === undefined || value === '') return '-';
+      const text = String(value).trim();
+      if (!text) return '-';
+      if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+      if (/^\d{4}-\d{2}-\d{2}\s/.test(text)) return text.slice(0, 10);
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(text)) {
+        const [dd, mm, yyyy] = text.split('/');
+        return `${yyyy}-${mm}-${dd}`;
+      }
+      return text;
+    }
+    async function importExternalPaymentsFromFile(file) {
+      const fileName = String(file?.name || '').toLowerCase();
+      let rows = [];
+
+      if (fileName.endsWith('.csv')) {
+        const text = await file.text();
+        const normalizedCsv = text
+          .replace(/^\uFEFF/, '')
+          .replace(/,\s+/g, ',');
+        const workbook = XLSX.read(normalizedCsv, { type: 'string' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, raw: false, defval: '', blankrows: false });
+        rows = rows.map(row => Array.isArray(row) ? row.map(cell => typeof cell === 'string' ? cell.trim() : cell) : row);
+      } else {
+        const data = await readFileAsArrayBuffer(file);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, raw: false, defval: '', blankrows: false });
+        rows = rows.map(row => Array.isArray(row) ? row.map(cell => typeof cell === 'string' ? cell.trim() : cell) : row);
+      }
+
+      if (!rows.length) throw new Error('File vuoto o non leggibile.');
+
+      const normalizeHeader = (value) => String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+      const headerRow = rows[0] || [];
+      const headerMap = {};
+      headerRow.forEach((cell, index) => { headerMap[normalizeHeader(cell)] = index; });
+      const normalizedHeaderSignature = headerRow.map(normalizeHeader).join('|');
+      const expectedCsvSignature = [
+        'codice pagamento pcc',
+        'macrovoce di spesa (cluster)',
+        'wbs',
+        'sal',
+        'periodo',
+        'emittente',
+        'cig',
+        'descrizione',
+        'numero fattura',
+        'data fattura',
+        'id mandato',
+        'data mandato',
+        'importo mandato'
+      ].join('|');
+      const usePositionalCsvMapping = fileName.endsWith('.csv') && normalizedHeaderSignature === expectedCsvSignature;
+
+      const getCell = (row, ...headerNames) => {
+        for (const headerName of headerNames) {
+          const index = headerMap[normalizeHeader(headerName)];
+          if (index !== undefined) return row[index] ?? '';
+        }
+        return '';
+      };
+
+      const bodyRows = rows.slice(1).filter(row => Array.isArray(row) && row.some(cell => String(cell ?? '').trim() !== ''));
+      const parsed = bodyRows.map((row, index) => {
+        const codicePagamentoPCC = String(usePositionalCsvMapping ? (row[0] ?? '') : getCell(row, 'Codice Pagamento PCC')).trim();
+        const categoria = String(usePositionalCsvMapping ? (row[1] ?? '') : getCell(row, 'Macrovoce di spesa (cluster)', 'MACROVOCE DI SPESA (Cluster)')).trim();
+        const wbs = String(usePositionalCsvMapping ? (row[2] ?? '') : getCell(row, 'WBS')).trim() || '-';
+        const sal = String(usePositionalCsvMapping ? (row[3] ?? '') : getCell(row, 'SAL')).trim() || '-';
+        const periodo = String(usePositionalCsvMapping ? (row[4] ?? '') : getCell(row, 'Periodo')).trim() || '-';
+        const emittente = String(usePositionalCsvMapping ? (row[5] ?? '') : getCell(row, 'Emittente')).trim();
+        const cig = String(usePositionalCsvMapping ? (row[6] ?? '') : getCell(row, 'CIG')).trim() || 'N/D';
+        const descrizione = String(usePositionalCsvMapping ? (row[7] ?? '') : getCell(row, 'Descrizione')).trim();
+        const numeroFattura = String(usePositionalCsvMapping ? (row[8] ?? '') : getCell(row, 'Numero Fattura', 'Numero fattura')).trim();
+        const dataFattura = parseFlexibleDate(usePositionalCsvMapping ? (row[9] ?? '') : getCell(row, 'Data fattura', 'Data Fattura'));
+        const mandato = String(usePositionalCsvMapping ? (row[10] ?? '') : getCell(row, 'ID Mandato', 'Mandato')).trim();
+        const dataMandato = parseFlexibleDate(usePositionalCsvMapping ? (row[11] ?? '') : getCell(row, 'Data mandato', 'Data pagamento'));
+        const importo = parseFlexibleNumber(usePositionalCsvMapping ? (row[12] ?? '') : getCell(row, 'Importo mandato', 'Importo totale pagamento'));
+
+        if (!categoria || !emittente || !mandato || !(importo > 0)) return null;
+
+        return {
+          id: `ep-${Date.now()}-${index}`,
+          codicePcc: codicePagamentoPCC,
+          codicePagamentoPCC,
+          categoria,
+          cluster: categoria,
+          wbs,
+          sal,
+          periodo,
+          emittente,
+          operatore: emittente,
+          cig,
+          descrizione: descrizione || numeroFattura || `Pagamento esterno ${mandato}`,
+          numeroFattura,
+          dataFattura,
+          mandato,
+          dataMandato,
+          dataPagamento: dataMandato,
+          importo,
+          partitaIvaCf: '',
+          pivaFornitore: '',
+          stato: 'Apparso',
+          check: true,
+          caricato: false
+        };
+      }).filter(Boolean);
+
+      if (!parsed.length) throw new Error('Nessuna riga valida trovata nel file selezionato.');
+      state.externalPayments = parsed;
+      rerenderAll();
+      const total = parsed.reduce((sum, item) => sum + item.importo, 0);
+      showNotification(`✅ Estrazione caricata: ${parsed.length} pagamenti, totale ${formatCurrency(total)}`);
+    }
+    function updateAllegatoConfirmationButton(show) {
+      const button = document.getElementById('confirmAllegatoBtn');
+      if (!button) return;
+      button.classList.toggle('hidden', !show);
+    }
+
+    function generateAttachment3A() {
+      // Deduplica gli entry per evitare righe duplicate nel dettaglio
+      const seenIds = new Set();
+      const transferredEntries = state.budgetEntries.filter(e => {
+        if (e.reportingQueued === true && !seenIds.has(e.id) && e.originalStatus !== 'Previsto') {
+          seenIds.add(e.id);
+          return true;
+        }
+        return false;
+      });
+
+      if (transferredEntries.length === 0) {
+        updateAllegatoConfirmationButton(false);
+        showNotification('Nessun costo trasferito da rendicontare');
+        return;
+      }
+
+      const wb = XLSX.utils.book_new();
+
+      const riepilogoData = createRiepilogoSheet(transferredEntries);
+      const riepilogoWS = XLSX.utils.aoa_to_sheet(riepilogoData);
+
+      const euroFormat = '"€"#,##0.00';
+      for (let row = 8; row <= riepilogoData.length; row++) {
+        ['B', 'C', 'D', 'E'].forEach(col => {
+          const cellRef = col + row;
+          if (riepilogoWS[cellRef]) {
+            riepilogoWS[cellRef].z = euroFormat;
+          }
+        });
+      }
+
+      XLSX.utils.book_append_sheet(wb, riepilogoWS, "Riepilogo rendicontazioni");
+
+      const dettaglioData = createDettaglioSheet(transferredEntries);
+      const dettaglioWS = XLSX.utils.aoa_to_sheet(dettaglioData);
+
+      for (let row = 6; row <= dettaglioData.length; row++) {
+        ['H', 'K'].forEach(col => {
+          const cellRef = col + row;
+          if (dettaglioWS[cellRef]) {
+            dettaglioWS[cellRef].z = euroFormat;
+          }
+        });
+      }
+
+      XLSX.utils.book_append_sheet(wb, dettaglioWS, "Dettaglio costi");
+
+      XLSX.writeFile(wb, 'Allegato_3A.xlsx');
+      updateAllegatoConfirmationButton(true);
+      showNotification(`✅ Allegato 3A generato con ${transferredEntries.length} costi da verificare prima della presentazione.`);
+    }
+
+    function confirmAttachment3A() {
+      const entriesToPresent = deduplicateBudgetEntries(state.budgetEntries.filter(entry => entry.reportingQueued === true && (entry.transferRequestId === state.transferRequestNumber || entry.source === 'Sistema esterno')));
+
+      if (!entriesToPresent.length) {
+        updateAllegatoConfirmationButton(false);
+        showNotification('Nessun pagamento disponibile da presentare per la richiesta corrente.');
+        return;
+      }
+
+      const confirmed = confirm("Sei sicuro che l'Allegato 3A è corretto? Questa azione aggiornerà lo stato della richiesta a 'Presentata' e markerà tutti i pagamenti inclusi come 'Rendicontato'.");
+      if (!confirmed) return;
+
+      const requestIndex = state.requestReferenceData.findIndex(request => request.id === state.transferRequestNumber);
+      if (requestIndex === -1) {
+        showNotification('Richiesta di trasferimento non trovata.');
+        return;
+      }
+
+      const mandateKeysToPresent = new Set(
+        entriesToPresent
+          .map(entry => getPaymentMandateKey(entry))
+          .filter(Boolean)
+      );
+
+      state.budgetEntries.forEach(entry => {
+        if (!entry.reportingQueued) return;
+        const mandateKey = getPaymentMandateKey(entry);
+        if (mandateKey && mandateKeysToPresent.has(mandateKey)) {
+          entry.stato = 'Rendicontato';
+          entry.nonRendicontato = false;
+        }
+      });
+
+      state.transferRequestStatus = 'Presentata';
+      state.requestReferenceData[requestIndex] = {
+        ...state.requestReferenceData[requestIndex],
+        rendicontata: true,
+        statoLabel: 'Presentata',
+        dataRichiesta: new Date().toISOString().slice(0, 10),
+        dataRendicontazione: new Date().toISOString().slice(0, 10)
+      };
+
+      updateAllegatoConfirmationButton(false);
+      rerenderAll();
+      showNotification(`✅ Richiesta ${state.transferRequestNumber} presentata con successo. ${entriesToPresent.length} pagamenti aggiornati a "Rendicontato".`);
+    }
+
+    function createRiepilogoSheet(entries) {
+      const macrovoci = [
+        'GARE e Affidamenti per servizi beni e lavori',
+        'Accordi ex art. 15 Lg 241/90',
+        'Personale esterno',
+        'Personale interno',
+        'Missioni / trasferte personale',
+        'Altri costi diretti connessi alla realizzazione degli interventi'
+      ];
+
+      const deduplicatedBudgetEntries = getDeduplicatedBudgetEntries();
+      const deduplicatedCurrentEntries = deduplicateBudgetEntries(entries || []);
+
+      const sumByMacrovoceAndFilter = (collection, macro, filterFn, amountSelector) => {
+        return collection
+          .filter(entry => (entry.categoria || entry.cluster || '') === macro && filterFn(entry))
+          .reduce((sum, entry) => sum + (Number(amountSelector(entry)) || 0), 0);
+      };
+
+      const getQeImportoByMacrovoce = (macro) => {
+        const qeItem = state.qe.find(item => (item.label || '') === macro);
+        if (qeItem) return Number(qeItem.importo || 0);
+        return deduplicatedBudgetEntries
+          .filter(entry => (entry.categoria || '') === macro && entry.source === 'QE')
+          .reduce((sum, entry) => sum + (Number(entry.fatturaImporto || entry.mandatoImporto || entry.importo || 0) || 0), 0);
+      };
+
+      const aggregati = {};
+      macrovoci.forEach(m => {
+        const importoQe = getQeImportoByMacrovoce(m);
+        const importoPrecedenti = sumByMacrovoceAndFilter(deduplicatedBudgetEntries, m, entry => entry.stato === 'Rendicontato' && entry.transferRequestId !== state.transferRequestNumber, entry => entry.fatturaImporto || entry.mandatoImporto || entry.importo || 0);
+        const importoPresente = sumByMacrovoceAndFilter(deduplicatedCurrentEntries, m, entry => entry.reportingQueued === true && entry.transferRequestId === state.transferRequestNumber && entry.originalStatus !== 'Previsto', entry => entry.mandatoImporto || entry.importo || entry.fatturaImporto || 0);
+
+        aggregati[m] = {
+          importoQe,
+          importoPrecedenti,
+          importoPresente
+        };
+      });
+
+      // Costruisci il layout esatto come nella tua immagine
+      const data = [
+        ['CUP: I81G22000100001'],
+        ['SOGGETTO ATTUATORE: Istituto Superiore per la Protezione e la Ricerca Ambientale'],
+        ['ID rendiconto: xxx'],
+        [''],
+        ['QUADRO ECONOMICO DI PROGETTO', '', '', 'RENDICONTI DI PROGETTO TRASMESSI'],
+        ['MACROVOCE DI SPESA', 'IMPORTO PREVISTO DA QUADRO ECONOMICO', 'IMPORTI RICHIESTI NEI PRECEDENTI RENDICONTI', 'IMPORTI RICHIESTI NEL PRESENTE RENDICONTO', 'TOTALE IMPORTI RENDICONTATI'],
+        ['', 'A', 'B', 'C', 'D=B+C'],
+      ];
+
+      macrovoci.forEach(macro => {
+        const agg = aggregati[macro];
+        const totale = agg.importoPrecedenti + agg.importoPresente;
+        data.push([
+          macro,
+          agg.importoQe,
+          agg.importoPrecedenti,
+          agg.importoPresente,
+          totale
+        ]);
+      });
+
+      const totalQe = Object.values(aggregati).reduce((sum, a) => sum + a.importoQe, 0);
+      const totalPrecedenti = Object.values(aggregati).reduce((sum, a) => sum + a.importoPrecedenti, 0);
+      const totalPresente = Object.values(aggregati).reduce((sum, a) => sum + a.importoPresente, 0);
+      const totalTotale = totalPrecedenti + totalPresente;
+
+      data.push(['TOTALE', totalQe, totalPrecedenti, totalPresente, totalTotale]);
+
+      return data;
+    }
+
+    function createDettaglioSheet(entries) {
+      const data = [
+        [''],
+        ['CUP: I81G22000100001'],
+        ['SOGGETTO ATTUATORE: Istituto Superiore per la Protezione e la Ricerca Ambientale'],
+        ['ID rendiconto: xxx'],
+        [''],
+        ['MACROVOCE DI SPESA (CLUSTER)', 'WBS', 'CIG', 'Emittente', 'Descrizione', 'Numero fattura', 'Data fattura', 'Importo fattura', 'ID Mandato', 'Data mandato', 'Importo mandato'],
+      ];
+
+      entries.forEach(entry => {
+        data.push([
+          entry.categoria || '',
+          entry.wbs || '-',
+          entry.cig || 'N/D',
+          entry.emittente || '-',
+          entry.descrizione || entry.voce || '',
+          entry.fatturaNumero || '-',
+          entry.fatturaData || '-',
+          Number(entry.fatturaImporto || entry.importo || 0),
+          entry.numero || '-',
+          entry.mandatoData || '-',
+          Number(entry.mandatoImporto || entry.importo || 0)
+        ]);
+      });
+
+      return data;
+    }
+    async function importQEFromFile(file) {
+      const parseNumber = (value) => {
+        if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+        const text = String(value ?? '').trim();
+        if (!text) return 0;
+        const cleaned = text.replace(/\s|€/g, '').replace(/\./g, '').replace(',', '.');
+        return Number(cleaned) || 0;
+      };
+      const parseDate = (value) => {
+        if (value === null || value === undefined || value === '') return '-';
+        const text = String(value).trim();
+        if (!text) return '-';
+        if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+        if (/^\d{4}-\d{2}-\d{2}\s/.test(text)) return text.slice(0, 10);
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(text)) {
+          const [dd, mm, yyyy] = text.split('/');
+          return `${yyyy}-${mm}-${dd}`;
+        }
+        return text;
+      };
+      const normalizeLabel = (value) => String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+      const getRowsFromSheet = (sheet) => {
+        if (!sheet) return [];
+        return XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '', blankrows: false })
+          .map(row => Array.isArray(row) ? row.map(cell => typeof cell === 'string' ? cell.trim() : cell) : row);
+      };
+      const findSheetName = (workbook, matcher) => workbook.SheetNames.find(name => matcher(normalizeLabel(name)));
+      const makeEntryFromRow = (row, idx) => {
+        const categoria = String(row[0] ?? '').trim();
+        if (!categoria || categoria.toLowerCase() === 'totale') return null;
+        const wbs = String(row[1] ?? '').trim() || '-';
+        const sal = String(row[2] ?? '').trim() || '-';
+        const periodo = String(row[3] ?? '').trim() || '-';
+        const emittente = String(row[4] ?? '').trim() || '-';
+        const cig = String(row[5] ?? '').trim() || 'N/D';
+        const descrizione = String(row[6] ?? '').trim() || categoria;
+        const fatturaNumero = String(row[7] ?? '').trim() || '-';
+        const fatturaData = parseDate(row[8]);
+        const numero = String(row[9] ?? '').trim() || '-';
+        const mandatoData = parseDate(row[10]);
+        const stato = String(row[11] ?? '').trim() || 'Previsto';
+        const fatturaImporto = parseNumber(row[12]);
+        const importoPagato = parseNumber(row[13]);
+        const importoRendicontato = parseNumber(row[14]);
+        const transferRequestId = String(row[15] ?? '').trim();
+        const mandatoImporto = importoRendicontato > 0 ? importoRendicontato : (importoPagato > 0 ? importoPagato : fatturaImporto);
+        const importo = fatturaImporto || mandatoImporto;
+        if (!importo) return null;
+        return normalizeBudgetEntry({
+          id: `be-qe-${idx + 1}`,
+          source: BUDGET_QE_SOURCE,
+          voce: descrizione,
+          categoria,
+          importo,
+          data: mandatoData !== '-' ? mandatoData : (fatturaData !== '-' ? fatturaData : '-'),
+          inseritoDa: 'Import QE',
+          stato,
+          nonRendicontato: stato !== 'Rendicontato',
+          reportingQueued: false,
+          transferRequestId,
+          wbs,
+          sal,
+          periodo,
+          cig,
+          emittente,
+          descrizione,
+          fatturaNumero,
+          fatturaData,
+          fatturaImporto,
+          numero,
+          mandatoData,
+          mandatoImporto,
+          importoPagato,
+          importoRendicontato
+        }, idx);
+      };
+      const buildRequestReferenceData = (rows) => {
+        if (!rows.length) return [];
+        const headerRow = rows[0] || [];
+        const headerMap = {};
+        headerRow.forEach((cell, index) => { headerMap[normalizeLabel(cell)] = index; });
+        const getCell = (row, ...names) => {
+          const index = names.map(name => headerMap[normalizeLabel(name)]).find(value => Number.isInteger(value));
+          return index === undefined ? '' : row[index];
+        };
+        return rows
+          .slice(1)
+          .filter(row => row.some(cell => String(cell ?? '').trim() !== ''))
+          .map((row, idx) => {
+            const nome = String(getCell(row, 'N° Richiesta', 'N. Richiesta', 'Richiesta di Trasferimento', 'Numero richiesta') ?? '').trim();
+            if (!nome) return null;
+            const importo = parseNumber(getCell(row, 'Importo (€)', 'Importo', 'Importo Euro'));
+            const percentualeRaw = getCell(row, '% su totale', '% rendicontato', 'Percentuale');
+            const statoLabel = String(getCell(row, 'Stato') ?? '').trim() || 'Da presentare';
+            const periodo = String(getCell(row, 'Periodo coperto', 'Periodo') ?? '').trim() || '-';
+            const dataRendicontazione = parseDate(getCell(row, 'Data rendicontazione', 'Data richiesta'));
+            const rendicontata = /presentat|rendicontat|approvat/i.test(statoLabel);
+            const percentualeValue = typeof percentualeRaw === 'string' && percentualeRaw.includes('%')
+              ? parseNumber(percentualeRaw)
+              : (parseNumber(percentualeRaw) <= 1 ? parseNumber(percentualeRaw) * 100 : parseNumber(percentualeRaw));
+            const normalizedId = nome.toUpperCase().startsWith('MER-TR-')
+              ? nome.trim()
+              : `MER-TR-${idx + 1}`;
+            return {
+              id: normalizedId,
+              nome,
+              periodo,
+              importo,
+              percentuale: percentualeValue || 0,
+              rendicontata,
+              statoLabel,
+              pagamenti: 0,
+              dataRichiesta: rendicontata ? dataRendicontazione : '-',
+              dataRendicontazione
+            };
+          })
+          .filter(Boolean);
+      };
+      try {
+        showNotification('⏳ Caricamento QE in corso...');
+        const fileName = String(file?.name || '').toLowerCase();
+        let qeRows = [];
+        let dashboardRows = [];
+
+        if (fileName.endsWith('.csv')) {
+          const text = await file.text();
+          const normalizedCsv = text.replace(/^\uFEFF/, '');
+          const workbook = XLSX.read(normalizedCsv, { type: 'string' });
+          qeRows = getRowsFromSheet(workbook.Sheets[workbook.SheetNames[0]]);
+        } else {
+          const data = await readFileAsArrayBuffer(file);
+          const workbook = XLSX.read(data, { type: 'array' });
+          console.log('[QE IMPORT] workbook sheets:', workbook.SheetNames);
+          const qeSheetName = findSheetName(workbook, name => name.includes('quadro economico mer')) || workbook.SheetNames[0];
+          const dashboardSheetName = findSheetName(workbook, name => name === 'dashboard' || name.includes('dashboard'));
+          qeRows = getRowsFromSheet(workbook.Sheets[qeSheetName]);
+          dashboardRows = getRowsFromSheet(workbook.Sheets[dashboardSheetName]);
+          console.log('[QE IMPORT] QE sheet:', qeSheetName, qeRows);
+          console.log('[QE IMPORT] Dashboard sheet:', dashboardSheetName, dashboardRows);
+        }
+
+        if (!qeRows.length) throw new Error('Nessun dato valido trovato nel file');
+
+        let mappedEntries = [];
+        try {
+          const dataRows = qeRows.slice(1).filter(row => row.some(cell => String(cell ?? '').trim() !== ''));
+          mappedEntries = dataRows.map((row, idx) => makeEntryFromRow(row, idx)).filter(Boolean);
+          console.log('[QE IMPORT] mapped entries direct:', mappedEntries);
+        } catch (directError) {
+          console.warn('[QE IMPORT] direct parsing failed, fallback starting:', directError);
+        }
+
+        if (!mappedEntries.length) {
+          const fallbackRows = qeRows.filter((row, index) => index > 0 && row.some(cell => String(cell ?? '').trim() !== '')).slice(0, 50);
+          console.log('[QE IMPORT] fallback rows:', fallbackRows);
+          mappedEntries = fallbackRows.map((row, idx) => makeEntryFromRow(row, idx)).filter(Boolean);
+          console.log('[QE IMPORT] mapped entries fallback:', mappedEntries);
+        }
+
+        if (!mappedEntries.length) throw new Error('Nessuna riga valida trovata nel foglio Quadro Economico MER');
+
+        const qeSummaryMap = new Map();
+        mappedEntries.forEach(entry => qeSummaryMap.set(entry.categoria, (qeSummaryMap.get(entry.categoria) || 0) + (entry.fatturaImporto || entry.importo || 0)));
+        state.qe = Array.from(qeSummaryMap.entries()).map(([label, importo]) => ({ label, importo }));
+        state.budgetEntries = [...state.budgetEntries.filter(entry => entry.source !== BUDGET_QE_SOURCE), ...mappedEntries].map((entry, index) => normalizeBudgetEntry(entry, index));
+
+        const importedRequestData = buildRequestReferenceData(dashboardRows);
+        if (importedRequestData.length) {
+          state.requestReferenceData = importedRequestData;
+          const currentRequestExists = importedRequestData.some(request => request.id === state.transferRequestNumber);
+          if (!currentRequestExists) state.transferRequestNumber = importedRequestData[0].id;
+          const activeRequest = importedRequestData.find(request => request.id === state.transferRequestNumber) || importedRequestData[0];
+          state.transferRequestStatus = activeRequest?.statoLabel || state.transferRequestStatus;
+        }
+
+        rerenderAll();
+        const total = mappedEntries.reduce((sum, entry) => sum + (entry.importo || 0), 0);
+        const requestsCount = importedRequestData.length;
+        console.log('[QE IMPORT] import completed:', { rowsImported: mappedEntries.length, total, requestsCount, entries: mappedEntries, requests: importedRequestData });
+        showNotification(`✅ QE caricato: ${mappedEntries.length} righe importate, totale ${formatCurrency(total)}${requestsCount ? ` · Dashboard aggiornata con ${requestsCount} richieste` : ''}`);
+      } catch (error) {
+        console.error('[QE IMPORT] fatal error:', error);
+        showNotification('❌ Errore caricamento QE: ' + error.message);
+      }
+    }
+    async function importPaymentsFromFile(file) { showNotification('Funzione disponibile ma non modificata in questa fase.'); }
+    document.querySelectorAll('.nav-item').forEach(item => item.addEventListener('click', e => { e.preventDefault(); const view = item.dataset.view; const tab = item.dataset.tab || null; const tabGroup = tab ? getTabGroupForView(view) : null; activatePage(view, { tab, tabGroup, navItem: item, updateHistory: true }); }));
+    document.getElementById('loginBtn')?.addEventListener('click', () => login(document.getElementById('loginRoleSelect')?.value || 'admin'));
+    document.getElementById('logoutBtn')?.addEventListener('click', () => logout());
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => { const group = btn.dataset.tabGroup; const target = btn.dataset.tabTarget; setTabState(group, target); activatePage(state.currentPage, { tab: target, tabGroup: group }); }));
+    document.getElementById('requestDetailBtn').addEventListener('click', () => { updateTransferDates(); showNotification(`Dettaglio aggiornato: ${getTransferSourceEntries().length} pagamenti non rendicontati disponibili.`); });
+    document.getElementById('transferStartDate').addEventListener('change', renderQeCards);
+    document.getElementById('transferEndDate').addEventListener('change', rerenderAll);
+    document.getElementById('submitTransferRequest').addEventListener('click', () => { const included = state.budgetEntries.filter(entry => entry.transferRequestId === state.transferRequestNumber && entry.nonRendicontato && !entry.reportingQueued); if (!included.length) return showNotification('Seleziona almeno un pagamento da includere.'); state.transferSubmitted = true; state.transferRequestStatus = 'Inviata'; included.forEach(entry => { entry.reportingQueued = true; entry.transferRequestId = state.transferRequestNumber; const existingMandate = state.mandates.find(m => m.numero === entry.numero); if (!existingMandate) state.mandates.push({ id: `md-transfer-${entry.id}`, fatturaNumero: entry.fatturaNumero || '-', fatturaData: entry.fatturaData || '-', fatturaImporto: entry.fatturaImporto || entry.importo, numero: entry.numero, data: entry.mandatoData || entry.data, importo: entry.mandatoImporto || entry.importo, documento: `pagamento_${entry.numero}.pdf`, checkState: 'Caricabile', stato: 'Caricato' }); }); rerenderAll(); showNotification(`Richiesta ${state.transferRequestNumber} inviata con ${included.length} pagamenti trasferiti in rendicontazione.`); });
+    document.getElementById('resetTransferSelection').addEventListener('click', () => { state.budgetEntries.forEach(entry => { if (entry.nonRendicontato && !entry.reportingQueued) entry.transferRequestId = ''; }); state.transferSubmitted = false; state.transferRequestStatus = 'Bozza'; rerenderAll(); showNotification('Selezione trasferimento azzerata.'); });
+    document.getElementById('addReportingItem').addEventListener('click', () => {
+      const categoria = document.getElementById('newItemCategory').value;
+      if (!categoria) return showNotification('Seleziona una categoria.');
+      const sal = document.getElementById('reportingSalSearch').value;
+      const operatore = document.getElementById('reportingOperatorSearch').value;
+      const matchedPayment = state.payments.find(p => (sal === 'all' || p.sal === sal) && (operatore === 'all' || p.operatore === operatore));
+      const invoiceNumber = document.getElementById('invoiceNumber').value.trim();
+      const invoiceDate = document.getElementById('invoiceDate').value;
+      const invoiceAmount = Number(document.getElementById('invoiceAmount').value || 0);
+      const mandateNumber = document.getElementById('mandateNumber').value.trim();
+      const mandateDate = document.getElementById('mandateDate').value;
+
+      if (!invoiceNumber || !invoiceDate || !invoiceAmount || !mandateNumber || !mandateDate) return showNotification('Compila tutti i dati di fattura e mandato.');
+
+      const possibleDuplicate = state.budgetEntries.find(entry => {
+        const sameMacrovoce = (entry.categoria || '') === categoria;
+        const sameAmount = Math.abs((Number(entry.fatturaImporto || entry.mandatoImporto || entry.importo || 0) || 0) - invoiceAmount) < 1;
+        const sameOrSimilarDate = entry.fatturaData === invoiceDate || entry.mandatoData === mandateDate;
+        const differentSource = entry.source !== 'AGP-BIL';
+        return sameMacrovoce && sameAmount && sameOrSimilarDate && differentSource;
+      });
+
+      if (possibleDuplicate) {
+        const confirmAdd = confirm(
+          `⚠️ ATTENZIONE: Possibile DOUBLE COUNTING!\n\n` +
+          `Esiste già un pagamento simile nel Database dei costi:\n` +
+          `- Macrovoce: ${possibleDuplicate.categoria}\n` +
+          `- Importo: €${(possibleDuplicate.fatturaImporto || possibleDuplicate.importo || 0).toLocaleString('it-IT', {minimumFractionDigits: 2})}\n` +
+          `- Stato: ${possibleDuplicate.stato}\n\n` +
+          `Suggerimento: Usa il tasto "Modifica" nel Database dei costi per aggiornare le informazioni mancanti.\n\n` +
+          `Vuoi comunque aggiungere questa riga? (Non consigliato)`
+        );
+        if (!confirmAdd) return;
+      }
+
+      const importo = invoiceAmount || (matchedPayment ? matchedPayment.importo : 0);
+      const requestId = state.transferRequestNumber;
+      const cig = document.getElementById('agpCig').value || 'N/D';
+      const wbs = document.getElementById('agpWbs').value || '-';
+      const entryId = `agp-${Date.now()}`;
+
+      state.reportingItems.push({id:`ri-${Date.now()}`, categoria, importo, descrizione: categoria, requestId, sal, operatore, cig, wbs});
+      state.budgetEntries.push(normalizeBudgetEntry({
+        id: entryId,
+        source: 'AGP-BIL',
+        voce: categoria,
+        categoria,
+        importo,
+        data: mandateDate || invoiceDate || '-',
+        inseritoDa: 'Ufficio AGP-BIL',
+        stato: 'Emesso',
+        nonRendicontato: true,
+        reportingQueued: false,
+        transferRequestId: '',
+        wbs,
+        sal: sal === 'all' ? '-' : sal,
+        cig,
+        emittente: operatore === 'all' ? '-' : operatore,
+        descrizione: categoria,
+        fatturaNumero: invoiceNumber,
+        fatturaData: invoiceDate,
+        fatturaImporto: importo,
+        numero: mandateNumber,
+        mandatoData: mandateDate,
+        mandatoImporto: importo
+      }, state.budgetEntries.length));
+
+      document.getElementById('newItemCategory').value='';
+      document.getElementById('agpCig').value='';
+      document.getElementById('agpWbs').value='';
+      document.getElementById('reportingOperatorSearch').value='all';
+      document.getElementById('reportingSalSearch').value='all';
+      document.getElementById('invoiceNumber').value='';
+      document.getElementById('invoiceDate').value='';
+      document.getElementById('invoiceAmount').value='';
+      document.getElementById('mandateNumber').value='';
+      document.getElementById('mandateDate').value='';
+
+      rerenderAll();
+      showNotification('Voce di rendicontazione aggiunta e sincronizzata nel Database dei costi.');
+    });
+    document.getElementById('extractExternalPayments').addEventListener('click', async () => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.xlsx,.xls'; input.onchange = async (event) => { const file = event.target.files?.[0]; if (!file) return; try { await importExternalPaymentsFromFile(file); } catch (error) { showNotification(`Errore caricamento estrazione: ${error.message || error}`); } }; input.click(); });
+    document.getElementById('loadSelectedPayments').addEventListener('click', () => { const selected = state.externalPayments.filter(p => p.caricato && p.check); if (!selected.length) return showNotification('Seleziona almeno un pagamento caricabile.'); let addedCount = 0; selected.forEach((p, index) => { const idMandato = p.mandato || '-'; const numeroFattura = p.numeroFattura || '-'; const alreadyExists = state.budgetEntries.some(entry => String(entry.numero || '').trim() === String(idMandato).trim() && String(entry.fatturaNumero || '').trim() === String(numeroFattura).trim() && String(entry.source || '').trim() === 'Sistema esterno'); if (alreadyExists) return; const cluster = (p.categoria ?? p.cluster ?? '').toString().trim() || '-'; const wbs = p.wbs || '-'; const cig = p.cig || 'N/D'; const emittente = p.emittente || p.operatore || '-'; const descrizione = (p.descrizione ?? '').toString().trim() || '-'; const dataFattura = p.dataFattura || p.dataPagamento || '-'; const importo = Number(p.importo || 0); const dataMandato = p.dataMandato || p.dataPagamento || '-'; state.payments.push({ mandato:idMandato, operatore:emittente, importo, stato:'Caricato', data:dataMandato || '2026-09-03', wbs, cluster, sal:p.sal || '-', source:'Sistema esterno', included:false, loaded:true, reported:false }); state.budgetEntries.push(normalizeBudgetEntry({ id:`be-ext-${Date.now()}-${index}`, source:'Sistema esterno', voce:descrizione, categoria:cluster, importo, data:dataMandato || '2026-09-03', inseritoDa:'Sistema esterno', stato:'Caricato', nonRendicontato:false, reportingQueued:true, transferRequestId:'', wbs, cig, emittente, descrizione, fatturaNumero:numeroFattura, fatturaData:dataFattura, fatturaImporto:importo, numero:idMandato, mandatoData:dataMandato, mandatoImporto:importo, sal:p.sal || '-', periodo:p.periodo || '-' }, state.budgetEntries.length)); addedCount += 1; }); rerenderAll(); showNotification(`${addedCount} pagamenti selezionati caricati in rendicontazione.`); });
+    document.getElementById('generateAllegato').addEventListener('click', () => generateAttachment3A());
+    document.getElementById('confirmAllegatoBtn').addEventListener('click', () => confirmAttachment3A());
+    document.getElementById('resetBudgetFilters').addEventListener('click', () => { document.getElementById('budgetCategoryFilter').value = 'all'; document.getElementById('budgetDateFilter').value = ''; document.getElementById('budgetStateFilter').value = 'all'; document.getElementById('budgetSearchInput').value = ''; renderBudget(); showNotification('Filtri budget ripristinati.'); });
+    ['budgetCategoryFilter','budgetDateFilter','budgetStateFilter','budgetSearchInput'].forEach(id => document.getElementById(id).addEventListener(id === 'budgetSearchInput' ? 'input' : 'change', renderBudget));
+    document.getElementById('loadQeProjectBtn').addEventListener('click', () => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.xlsx,.xls,.csv'; input.addEventListener('change', async (event) => { const file = event.target.files?.[0]; if (file) await importQEFromFile(file); }, { once: true }); input.click(); });
+    document.getElementById('resetQeBtn').addEventListener('click', () => { state.qe = []; state.budgetEntries = state.budgetEntries.filter(entry => entry.source !== BUDGET_QE_SOURCE); rerenderAll(); showNotification('QE resettato.'); });
+    document.getElementById('resetAllBtn').addEventListener('click', () => { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(SESSION_STORAGE_KEY); state = normalizeState(initialState); rerenderAll(); activatePage('overview', { updateHistory: true }); toggleLoginUI(false); updateUserStatusUI(); updatePermissionsUI(); showNotification('Reset completo eseguito.'); });
+    document.getElementById('budgetEditModal').addEventListener('click', event => { if (event.target.id === 'budgetEditModal') closeBudgetModal(); });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && document.getElementById('budgetEditModal').classList.contains('show')) closeBudgetModal(); });
+    ['beneficialOwnerModal', 'relatedSubjectModal', 'procedureModal', 'agreementModal', 'subcontractModal'].forEach(modalId => {
+      document.getElementById(modalId).addEventListener('click', event => { if (event.target.id === modalId) closeSubjectsModal(modalId); });
+    });
+    
+    // Funzioni per gestire i modali della sezione Anagrafica
+    window.closeSubjectsModal = function(modalId) { const modal = document.getElementById(modalId); if (modal) { modal.classList.remove('show'); modal.classList.add('hidden'); modal.setAttribute('aria-hidden', 'true'); } };
+    window.toggleSubjectLoaded = function(arrayName, id, checked) { const arr = state[arrayName]; if (arr) { const item = arr.find(x => x.id === id); if (item) { item.synced = checked; rerenderAll(); saveState(); } } };
+    window.deleteSubject = function(arrayName, id) { const arr = state[arrayName]; if (arr) { state[arrayName] = arr.filter(x => x.id !== id); rerenderAll(); saveState(); showNotification(`Elemento eliminato da ${arrayName}.`); } };
+    
+    // Funzioni di import da file Excel (DEFINITE PRIMA degli event listener)
+    async function importBeneficialOwnersFromFile(file) { const data = await readFileAsArrayBuffer(file); const workbook = XLSX.read(data, { type: 'array' }); const ws = workbook.Sheets[workbook.SheetNames[0]]; const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' }); const bodyRows = rows.slice(1).filter(row => row.some(cell => String(cell ?? '').trim() !== '')); const imported = bodyRows.map((row, idx) => ({ id: `bo-import-${Date.now()}-${idx}`, soggetto: String(row[0] ?? '').trim(), titolare: String(row[1] ?? '').trim(), cf: String(row[2] ?? '').trim(), valido: true, synced: true })).filter(r => r.soggetto && r.titolare && r.cf); state.beneficialOwners = [...state.beneficialOwners, ...imported]; rerenderAll(); showNotification(`✅ ${imported.length} titolari effettivi caricati.`); }
+    async function importRelatedSubjectsFromFile(file) { const data = await readFileAsArrayBuffer(file); const workbook = XLSX.read(data, { type: 'array' }); const ws = workbook.Sheets[workbook.SheetNames[0]]; const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' }); const bodyRows = rows.slice(1).filter(row => row.some(cell => String(cell ?? '').trim() !== '')); const imported = bodyRows.map((row, idx) => ({ id: `rs-import-${Date.now()}-${idx}`, cf: String(row[0] ?? '').trim(), denominazione: String(row[1] ?? '').trim(), ruolo: String(row[2] ?? '').trim(), inizio: parseFlexibleDate(row[3]), fine: parseFlexibleDate(row[4]), synced: true })).filter(r => r.cf && r.denominazione); state.relatedSubjects = [...state.relatedSubjects, ...imported]; rerenderAll(); showNotification(`✅ ${imported.length} soggetti correlati caricati.`); }
+    async function importProceduresFromFile(file) { const fileName = String(file?.name || '').toLowerCase(); let rows = []; if (fileName.endsWith('.csv')) { const text = await file.text(); const normalizedCsv = text.replace(/^\uFEFF/, ''); const workbook = XLSX.read(normalizedCsv, { type: 'string' }); const ws = workbook.Sheets[workbook.SheetNames[0]]; rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '', blankrows: false }); } else { const data = await readFileAsArrayBuffer(file); const workbook = XLSX.read(data, { type: 'array' }); const ws = workbook.Sheets[workbook.SheetNames[0]]; rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '', blankrows: false }); } const bodyRows = rows.slice(1).filter(row => Array.isArray(row) && row.some(cell => String(cell ?? '').trim() !== '')); const imported = bodyRows.map((row, idx) => ({ id: `proc-import-${Date.now()}-${idx}`, cig: String(row[0] ?? '').trim(), importo: parseFlexibleNumber(row[1]), aggiudicatario: String(row[2] ?? '').trim(), data: parseFlexibleDate(row[3]), synced: true })).filter(r => r.cig && r.importo && r.aggiudicatario); state.procedures = [...state.procedures, ...imported]; rerenderAll(); showNotification(`✅ ${imported.length} procedure caricate.`); }
+    async function importAgreementsFromFile(file) { const fileName = String(file?.name || '').toLowerCase(); let rows = []; if (fileName.endsWith('.csv')) { const text = await file.text(); const normalizedCsv = text.replace(/^\uFEFF/, ''); const workbook = XLSX.read(normalizedCsv, { type: 'string' }); const ws = workbook.Sheets[workbook.SheetNames[0]]; rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '', blankrows: false }); } else { const data = await readFileAsArrayBuffer(file); const workbook = XLSX.read(data, { type: 'array' }); const ws = workbook.Sheets[workbook.SheetNames[0]]; rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '', blankrows: false }); } const bodyRows = rows.slice(1).filter(row => Array.isArray(row) && row.some(cell => String(cell ?? '').trim() !== '')); const imported = bodyRows.map((row, idx) => ({ id: `ag-import-${Date.now()}-${idx}`, cig: String(row[0] ?? '').trim(), descrizione: String(row[1] ?? '').trim(), importo: parseFlexibleNumber(row[2]), inizio: parseFlexibleDate(row[3]), fine: parseFlexibleDate(row[4]), synced: true })).filter(r => r.cig && r.descrizione && r.importo); state.agreements = [...state.agreements, ...imported]; rerenderAll(); showNotification(`✅ ${imported.length} accordi quadro caricati.`); }
+    async function importSubcontractsFromFile(file) { const data = await readFileAsArrayBuffer(file); const workbook = XLSX.read(data, { type: 'array' }); const ws = workbook.Sheets[workbook.SheetNames[0]]; const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' }); const bodyRows = rows.slice(1).filter(row => row.some(cell => String(cell ?? '').trim() !== '')); const imported = bodyRows.map((row, idx) => { const wbs = String(row[0] ?? '').trim(); const rup = String(row[1] ?? '').trim(); const cig = String(row[2] ?? '').trim(); const appaltatore = String(row[3] ?? '').trim(); const cfSubappaltatore = String(row[4] ?? '').trim(); const subappaltatore = String(row[5] ?? '').trim(); const importo = parseFlexibleNumber(row[6]); const attivita = String(row[7] ?? '').trim(); const stato = String(row[8] ?? 'Autorizzato').trim(); const dataAutorizzazione = parseFlexibleDate(row[9]); if (!wbs || !subappaltatore || !importo) return null; return { id: `sc-import-${Date.now()}-${idx}`, wbs, rup, cig, appaltatore, cfSubappaltatore, subappaltatore, importo, attivita, stato, dataAutorizzazione, synced: true }; }).filter(Boolean); state.subappalti = [...state.subappalti, ...imported]; rerenderAll(); showNotification(`✅ ${imported.length} subappalti caricati.`); }
+    
+    // Titolari Effettivi
+    document.getElementById('loadBeneficialOwnersBtn').addEventListener('click', async () => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.xlsx,.xls,.csv'; input.onchange = async (event) => { const file = event.target.files?.[0]; if (!file) return; try { await importBeneficialOwnersFromFile(file); } catch (error) { showNotification(`Errore caricamento: ${error.message}`); } }; input.click(); });
+    document.getElementById('addBeneficialOwnerBtn').addEventListener('click', () => { document.getElementById('boSoggetto').value = ''; document.getElementById('boTitolare').value = ''; document.getElementById('boCf').value = ''; const modal = document.getElementById('beneficialOwnerModal'); modal.classList.remove('hidden'); modal.classList.add('show'); modal.setAttribute('aria-hidden', 'false'); });
+    window.saveBeneficialOwner = function() { const soggetto = document.getElementById('boSoggetto').value.trim(); const titolare = document.getElementById('boTitolare').value.trim(); const cf = document.getElementById('boCf').value.trim(); if (!soggetto || !titolare || !cf) return showNotification('Compila tutti i campi.'); state.beneficialOwners.push({ id: `bo-${Date.now()}`, soggetto, titolare, cf, valido: true, synced: false }); closeSubjectsModal('beneficialOwnerModal'); rerenderAll(); showNotification('Titolare effettivo aggiunto.'); };
+    
+    // Soggetti Correlati
+    document.getElementById('loadRelatedSubjectsBtn').addEventListener('click', async () => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.xlsx,.xls,.csv'; input.onchange = async (event) => { const file = event.target.files?.[0]; if (!file) return; try { await importRelatedSubjectsFromFile(file); } catch (error) { showNotification(`Errore caricamento: ${error.message}`); } }; input.click(); });
+    document.getElementById('addRelatedSubjectBtn').addEventListener('click', () => { document.getElementById('rsCf').value = ''; document.getElementById('rsDenominazione').value = ''; document.getElementById('rsRuolo').value = ''; document.getElementById('rsInizio').value = ''; document.getElementById('rsFine').value = ''; const modal = document.getElementById('relatedSubjectModal'); modal.classList.remove('hidden'); modal.classList.add('show'); modal.setAttribute('aria-hidden', 'false'); });
+    window.saveRelatedSubject = function() { const cf = document.getElementById('rsCf').value.trim(); const denominazione = document.getElementById('rsDenominazione').value.trim(); const ruolo = document.getElementById('rsRuolo').value.trim(); const inizio = document.getElementById('rsInizio').value; const fine = document.getElementById('rsFine').value; if (!cf || !denominazione || !ruolo || !inizio || !fine) return showNotification('Compila tutti i campi.'); state.relatedSubjects.push({ id: `rs-${Date.now()}`, cf, denominazione, ruolo, inizio, fine, synced: false }); closeSubjectsModal('relatedSubjectModal'); rerenderAll(); showNotification('Soggetto correlato aggiunto.'); };
+    
+    // Procedure di Aggiudicazione
+    document.getElementById('loadProceduresBtn').addEventListener('click', async () => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.xlsx,.xls,.csv'; input.onchange = async (event) => { const file = event.target.files?.[0]; if (!file) return; try { await importProceduresFromFile(file); } catch (error) { showNotification(`Errore caricamento: ${error.message}`); } }; input.click(); });
+    document.getElementById('addProcedureBtn').addEventListener('click', () => { document.getElementById('procCig').value = ''; document.getElementById('procImporto').value = ''; document.getElementById('procAggiudicatario').value = ''; document.getElementById('procData').value = ''; const modal = document.getElementById('procedureModal'); modal.classList.remove('hidden'); modal.classList.add('show'); modal.setAttribute('aria-hidden', 'false'); });
+    window.saveProcedure = function() { const cig = document.getElementById('procCig').value.trim(); const importo = Number(document.getElementById('procImporto').value || 0); const aggiudicatario = document.getElementById('procAggiudicatario').value.trim(); const data = document.getElementById('procData').value; if (!cig || !importo || !aggiudicatario || !data) return showNotification('Compila tutti i campi.'); state.procedures.push({ id: `proc-${Date.now()}`, cig, importo, aggiudicatario, data, synced: false }); closeSubjectsModal('procedureModal'); rerenderAll(); showNotification('Procedura di aggiudicazione aggiunta.'); };
+    
+    // Accordi Quadro
+    document.getElementById('loadAgreementsBtn').addEventListener('click', async () => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.xlsx,.xls,.csv'; input.onchange = async (event) => { const file = event.target.files?.[0]; if (!file) return; try { await importAgreementsFromFile(file); } catch (error) { showNotification(`Errore caricamento: ${error.message}`); } }; input.click(); });
+    document.getElementById('addAgreementBtn').addEventListener('click', () => { document.getElementById('agCig').value = ''; document.getElementById('agDescrizione').value = ''; document.getElementById('agImporto').value = ''; document.getElementById('agInizio').value = ''; document.getElementById('agFine').value = ''; const modal = document.getElementById('agreementModal'); modal.classList.remove('hidden'); modal.classList.add('show'); modal.setAttribute('aria-hidden', 'false'); });
+    window.saveAgreement = function() { const cig = document.getElementById('agCig').value.trim(); const descrizione = document.getElementById('agDescrizione').value.trim(); const importo = Number(document.getElementById('agImporto').value || 0); const inizio = document.getElementById('agInizio').value; const fine = document.getElementById('agFine').value; if (!cig || !descrizione || !importo || !inizio || !fine) return showNotification('Compila tutti i campi.'); state.agreements.push({ id: `ag-${Date.now()}`, cig, descrizione, importo, inizio, fine, synced: false }); closeSubjectsModal('agreementModal'); rerenderAll(); showNotification('Accordo quadro aggiunto.'); };
+    
+    // Subappalti
+    document.getElementById('loadSubcontractsBtn').addEventListener('click', async () => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.xlsx,.xls'; input.onchange = async (event) => { const file = event.target.files?.[0]; if (!file) return; try { await importSubcontractsFromFile(file); } catch (error) { showNotification(`Errore caricamento: ${error.message}`); } }; input.click(); });
+    document.getElementById('addSubcontractBtn').addEventListener('click', () => { document.getElementById('scWbs').value = ''; document.getElementById('scRup').value = ''; document.getElementById('scCig').value = ''; document.getElementById('scAppaltatore').value = ''; document.getElementById('scCfSubappaltatore').value = ''; document.getElementById('scSubappaltatore').value = ''; document.getElementById('scImporto').value = ''; document.getElementById('scAttivita').value = ''; document.getElementById('scStato').value = 'Autorizzato'; document.getElementById('scDataAutorizzazione').value = ''; const modal = document.getElementById('subcontractModal'); modal.classList.remove('hidden'); modal.classList.add('show'); modal.setAttribute('aria-hidden', 'false'); });
+    window.saveSubcontract = function() { const wbs = document.getElementById('scWbs').value.trim(); const rup = document.getElementById('scRup').value.trim(); const cig = document.getElementById('scCig').value.trim(); const appaltatore = document.getElementById('scAppaltatore').value.trim(); const cfSubappaltatore = document.getElementById('scCfSubappaltatore').value.trim(); const subappaltatore = document.getElementById('scSubappaltatore').value.trim(); const importo = Number(document.getElementById('scImporto').value || 0); const attivita = document.getElementById('scAttivita').value.trim(); const stato = document.getElementById('scStato').value; const dataAutorizzazione = document.getElementById('scDataAutorizzazione').value; if (!wbs || !rup || !cig || !appaltatore || !cfSubappaltatore || !subappaltatore || !importo || !attivita || !dataAutorizzazione) return showNotification('Compila tutti i campi.'); state.subappalti.push({ id: `sc-${Date.now()}`, wbs, rup, cig, appaltatore, cfSubappaltatore, subappaltatore, importo, attivita, stato, dataAutorizzazione, synced: false }); closeSubjectsModal('subcontractModal'); rerenderAll(); showNotification('Subappalto aggiunto.'); };
+    
+    updateCurrentDateDisplay();
+    const hasActiveSession = initializeSession();
+    activatePage(state.currentPage || 'overview');
+    setTabState('overview-tabs', state.currentOverviewTab || 'ov-1');
+    setTabState('reporting-tabs', state.currentReportingTab || 'rep-2');
+    setTabState('subjects-tabs', state.currentSubjectsTab || 'sub-1');
+    setTabState('budget-tabs', state.currentBudgetTab || 'bud-1');
+    rerenderAll();
+    if (!hasActiveSession) toggleLoginUI(false);
+  </script>
+  </div>
+</body>
+</html>
